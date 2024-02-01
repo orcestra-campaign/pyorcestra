@@ -12,6 +12,13 @@ xarray = "*"
 astropy = "*"
 sgp4 = "*"
 
+intake = "*"
+healpy = "*"
+easygems = "*"
+matplotlib = "*"
+cartopy = "*"
+pyproj = "*"
+
 [tool.poetry-dynamic-versioning]
 enable = true
 vcs = "git"
