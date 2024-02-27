@@ -172,6 +172,13 @@ def simplify_path(path):
     return list(_gen())
 
 
+def path_as_ds(path):
+    if isinstance(path, list):
+        return expand_path(path, max_points=400)
+    else:
+        return path
+
+
 def track_len(ds):
     return float(ds.distance[-1]) - float(ds.distance[0])
 
@@ -179,8 +186,7 @@ def track_len(ds):
 def plot_path(path, ax, color=None, label=None, show_waypoints=True):
     import cartopy.crs as ccrs
 
-    if isinstance(path, list):
-        path = expand_path(path, max_points=400)
+    path = path_as_ds(path)
 
     ax.plot(path.lon, path.lat, transform=ccrs.Geodetic(), label=label, color=color)
 
@@ -252,8 +258,7 @@ def path_quickplot(path, sel_time, crossection=True):
 
     map_extent = [-65, -5, -0, 20]
 
-    if isinstance(path, list):
-        path = expand_path(path, max_points=400)
+    path = path_as_ds(path)
 
     cat = intake.open_catalog("https://tcodata.mpimet.mpg.de/internal.yaml")
     era5 = cat.HERA5(time="PT1H").to_dask()
