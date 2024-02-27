@@ -6,6 +6,9 @@ import xarray as xr
 import pyproj
 
 
+geod = pyproj.Geod(ellps="WGS84")
+
+
 @dataclass(frozen=True)
 class LatLon:
     lat: float
@@ -13,17 +16,15 @@ class LatLon:
     label: Optional[str] = None
 
     def towards(self, other, fraction=None, distance=None) -> LatLon:
-        g = pyproj.Geod(ellps="WGS84")
-
         if fraction is None and distance is None:
             fraction = 0.5
 
-        (az12, az21, dist) = g.inv(self.lon, self.lat, other.lon, other.lat)
+        (az12, az21, dist) = geod.inv(self.lon, self.lat, other.lon, other.lat)
 
         if distance is None:
             distance = dist * fraction
 
-        lon, lat, _ = g.fwd(self.lon, self.lat, az12, distance)
+        lon, lat, _ = geod.fwd(self.lon, self.lat, az12, distance)
         return LatLon(lat, lon)
 
     def assign_label(self, label: str) -> LatLon:
@@ -49,9 +50,7 @@ def expand_path(path: list[LatLon], dx=None, max_points=None):
         dists = np.zeros_like(lon_points)
         indices = np.arange(len(lon_points))
     else:
-        g = pyproj.Geod(ellps="WGS84")
-
-        (az12, az21, dist) = g.inv(
+        (az12, az21, dist) = geod.inv(
             lon_points[:-1], lat_points[:-1], lon_points[1:], lat_points[1:]
         )
         total_distance = np.sum(dist)
@@ -86,7 +85,7 @@ def expand_path(path: list[LatLon], dx=None, max_points=None):
             points_per_segment,
             dist,
         ):
-            lon, lat = np.array(g.npts(lon1, lat1, lon2, lat2, n)).T
+            lon, lat = np.array(geod.npts(lon1, lat1, lon2, lat2, n)).T
             lons.append([lon1])
             lons.append(lon)
             lats.append([lat1])
@@ -132,13 +131,11 @@ class IntoCircle:
     angle: float
 
     def __call__(self, start: LatLon, include_start: bool = False):
-        g = pyproj.Geod(ellps="WGS84")
-
-        (az12, az21, dist) = g.inv(
+        (az12, az21, dist) = geod.inv(
             start.lon, start.lat, self.center.lon, self.center.lat
         )
         angles = np.linspace(az21, az21 + self.angle, 30)
-        lons, lats, rev_az = g.fwd(
+        lons, lats, rev_az = geod.fwd(
             np.full_like(angles, self.center.lon),
             np.full_like(angles, self.center.lat),
             angles,
