@@ -176,15 +176,80 @@ def track_len(ds):
     return float(ds.distance[-1]) - float(ds.distance[0])
 
 
-def path_quickplot(path, sel_time):
+def plot_path(path, ax, color=None, label=None, show_waypoints=True):
+    import cartopy.crs as ccrs
+
+    if isinstance(path, list):
+        path = expand_path(path, max_points=400)
+
+    ax.plot(path.lon, path.lat, transform=ccrs.Geodetic(), label=label, color=color)
+
+    if show_waypoints:
+        import matplotlib.patheffects as pe
+
+        import textalloc as ta
+        from matplotlib.colors import to_rgba, to_hex
+
+        # deduplicate labels
+        lon, lat, text = zip(
+            *set(
+                zip(
+                    path.lon[path.waypoint_indices].values,
+                    path.lat[path.waypoint_indices].values,
+                    path.waypoint_labels.values,
+                )
+            )
+        )
+
+        label_color = to_rgba(color)
+        line_color = label_color[:3] + (label_color[3] * 0.5,)
+
+        ta.allocate_text(
+            ax.get_figure(),
+            ax,
+            lon,
+            lat,
+            text,
+            x_lines=[path.lon],
+            y_lines=[path.lat],
+            linecolor=to_hex(line_color, True),
+            textcolor=to_hex(label_color, True),
+            path_effects=[pe.withStroke(linewidth=4, foreground="white")],
+        )
+
+
+def plot_cwv(var, ax=None, levels=None):
+    import matplotlib.pylab as plt
+    import easygems.healpix as egh
+
+    levels = levels or [45, 50]
+    egh.healpix_show(
+        var,
+        method="linear",
+        alpha=0.75,
+        cmap="Blues",
+        vmin=45,
+        vmax=70,
+        ax=ax,
+    )
+
+    contour_lines = egh.healpix_contour(
+        var,
+        levels=levels,
+        colors="grey",
+        linewidths=1,
+        alpha=1,
+        ax=ax,
+    )
+    plt.clabel(contour_lines, inline=True, fontsize=8, colors="grey", fmt="%d")
+
+
+def path_quickplot(path, sel_time, crossection=True):
     import intake
     import healpy
     import matplotlib.pylab as plt
-    import matplotlib.patheffects as pe
     import cartopy.crs as ccrs
-    import easygems.healpix as egh
 
-    levels_cwv = [45, 50]
     map_extent = [-65, -5, -0, 20]
 
     if isinstance(path, list):
@@ -210,56 +275,21 @@ def path_quickplot(path, sel_time):
         draw_labels=True, dms=True, x_inline=False, y_inline=False, alpha=0.25
     )
 
-    var = era5.tcwv
-    egh.healpix_show(
-        var.sel(time=sel_time),
-        method="linear",
-        alpha=0.75,
-        cmap="Blues",
-        vmin=45,
-        vmax=70,
-        ax=ax1,
-    )  # for cc use vmin=0, vmax=0.1)
+    plot_cwv(era5.tcwv.sel(time=sel_time), ax=ax1)
 
-    contour_lines = egh.healpix_contour(
-        var.sel(time=sel_time),
-        levels=levels_cwv,
-        colors="grey",
-        linewidths=1,
-        alpha=1,
-        ax=ax1,
-    )
-    plt.clabel(contour_lines, inline=True, fontsize=8, colors="grey", fmt="%d")
+    plot_path(path, ax=ax1, label="HALO track", color="C1")
 
-    ax1.plot(
-        path.lon,
-        path.lat,
-        transform=ccrs.PlateCarree(),
-        label="HALO track",
-        color="C1",
-        linestyle="-",
-    )
+    if crossection:
+        ax2 = fig.add_subplot(2, 1, 2)
+        era_track.cc.plot(x="distance", yincrease=False, cmap="Blues", ax=ax2)
+        ax2.axhline(147, color="k")
 
-    for lon, lat, label in zip(
-        path.lon[path.waypoint_indices],
-        path.lat[path.waypoint_indices],
-        path.waypoint_labels.values,
-    ):
-        ax1.annotate(
-            label,
-            (lon, lat),
-            color="C1",
-            path_effects=[pe.withStroke(linewidth=4, foreground="white")],
+        secax = ax2.secondary_xaxis("top")
+        secax.set_xlabel("waypoints")
+        secax.set_xticks(
+            pix.distance[path.waypoint_indices], path.waypoint_labels.values
         )
-
-    ax2 = fig.add_subplot(2, 1, 2)
-    era_track.cc.plot(x="distance", yincrease=False, cmap="Blues", ax=ax2)
-    ax2.axhline(147, color="k")
-
-    secax = ax2.secondary_xaxis("top")
-    secax.set_xlabel("waypoints")
-    secax.set_xticks(pix.distance[path.waypoint_indices], path.waypoint_labels.values)
-    for point in pix.distance[path.waypoint_indices]:
-        ax2.axvline(point, color="k", lw=1)
+        for point in pix.distance[path.waypoint_indices]:
+            ax2.axvline(point, color="k", lw=1)
 
     return fig

@@ -22,6 +22,7 @@ easygems = "*"
 matplotlib = "*"
 cartopy = "*"
 pyproj = "*"
+textalloc = "*"
 
 [tool.poetry-dynamic-versioning]
 enable = true
