@@ -261,6 +261,43 @@ def plot_cwv(var, ax=None, levels=None):
     plt.clabel(contour_lines, inline=True, fontsize=8, colors="grey", fmt="%d")
 
 
+def path_preview(path, coastlines=True, gridlines=True, ax=None):
+    import matplotlib.pylab as plt
+    import cartopy.crs as ccrs
+
+    path = path_as_ds(path)
+
+    lon_min = path.lon.values.min()
+    lon_max = path.lon.values.max()
+    lat_min = path.lat.values.min()
+    lat_max = path.lat.values.max()
+
+    dlon = lon_max - lon_min
+    dlat = lat_max - lat_min
+
+    map_extent = [
+        lon_min - 0.2 * dlon,
+        lon_max + 0.2 * dlon,
+        lat_min - 0.2 * dlat,
+        lat_max + 0.2 * dlat,
+    ]
+
+    if ax is None:
+        fig, ax = plt.subplots(
+            figsize=(10, 10 * dlat / dlon),
+            subplot_kw={"projection": ccrs.PlateCarree()},
+        )
+    ax.set_extent(map_extent, crs=ccrs.PlateCarree())
+
+    if coastlines:
+        ax.coastlines(alpha=1.0)
+    if gridlines:
+        ax.gridlines(draw_labels=True, alpha=0.25)
+
+    plot_path(path, ax=ax, label="path", color="C1")
+    return ax
+
+
 def path_quickplot(path, sel_time, crossection=True):
     import intake
     import healpy
