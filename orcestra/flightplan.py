@@ -24,7 +24,10 @@ class LatLon:
         if distance is None:
             distance = dist * fraction
 
-        lon, lat, _ = geod.fwd(self.lon, self.lat, az12, distance)
+        return self.course(az12, distance)
+
+    def course(self, direction, distance) -> LatLon:
+        lon, lat, _ = geod.fwd(self.lon, self.lat, direction, distance)
         return LatLon(lat, lon)
 
     def assign_label(self, label: str) -> LatLon:
