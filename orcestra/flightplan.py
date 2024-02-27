@@ -99,7 +99,11 @@ def expand_path(path: list[LatLon], dx=None, max_points=None):
             distance_so_far += d
             indices_so_far += len(lon) + 1
 
-        indices.append(indices_so_far - 1)
+        lons.append([lon_points[-1]])
+        lats.append([lat_points[-1]])
+        dists.append([distance_so_far])
+        indices.append(indices_so_far)
+
         lons = np.concatenate(lons)
         lats = np.concatenate(lats)
         dists = np.concatenate(dists)
