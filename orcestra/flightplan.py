@@ -43,6 +43,7 @@ def expand_path(path: list[LatLon], dx=None, max_points=None):
     NOTE: this function follows great circles
     """
 
+    path = simplify_path(path)
     lon_points = np.asarray([p.lon for p in path])
     lat_points = np.asarray([p.lat for p in path])
     labels = [p.label for p in path]
@@ -181,6 +182,9 @@ def path_quickplot(path, sel_time):
 
     levels_cwv = [45, 50]
     map_extent = [-65, -5, -0, 20]
+
+    if isinstance(path, list):
+        path = expand_path(path, max_points=400)
 
     cat = intake.open_catalog("https://tcodata.mpimet.mpg.de/internal.yaml")
     era5 = cat.HERA5(time="PT1H").to_dask()
