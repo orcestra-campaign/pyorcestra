@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Optional
 import numpy as np
 import xarray as xr
+from scipy.optimize import minimize
 import pyproj
 from warnings import warn
 
@@ -133,17 +134,59 @@ def expand_path(path: list[LatLon], dx=None, max_points=None):
     )
 
 
+def _az_towards_point_with_angle(A, B, alpha, radius):
+    """
+    Find azimuth value from B such that the angle from B to a A
+    around an unknown point X is alpha, such and the distance
+    between B and X is radius.
+
+    A ------------ X
+                ^   \
+           angle \__ \   <-radius
+                      \
+                       B
+    """
+
+    def cost(angle):
+        lon, lat, rev_az = geod.fwd(B.lon, B.lat, angle, radius)
+        (azA, azB), _, _ = geod.inv(
+            [lon] * 2, [lat] * 2, [A.lon, B.lon], [A.lat, B.lat]
+        )
+        return (alpha - ((azA - azB + 180) % 360 - 180)) ** 2
+
+    az12, _, _ = geod.inv(A.lon, A.lat, B.lon, B.lat)
+    res = minimize(cost, az12 + 180 - alpha)
+
+    if not res.success:
+        raise ValueError(
+            f"could not find point X for angle {alpha}, reason: {res.message}"
+        )
+    return res.x[0]
+
+
 @dataclass
 class IntoCircle:
     center: LatLon
     radius: float
     angle: float
+    enter: Optional[float] = None
 
     def __call__(self, start: LatLon, include_start: bool = False):
-        (az12, az21, dist) = geod.inv(
-            start.lon, start.lat, self.center.lon, self.center.lat
-        )
-        angles = np.linspace(az21, az21 + self.angle, 30)
+        if self.enter is None:
+            (_, start_angle, _) = geod.inv(
+                start.lon, start.lat, self.center.lon, self.center.lat
+            )
+        else:
+            try:
+                start_angle = _az_towards_point_with_angle(
+                    start, self.center, 90 - self.enter, self.radius
+                )
+            except ValueError:
+                raise ValueError(
+                    f"could not find a solution for circle {self} with start point {start}, maybe start is inside cirle. You may want to try without specifying `enter`."
+                )
+
+        angles = np.linspace(start_angle, start_angle + self.angle, 30)
         lons, lats, rev_az = geod.fwd(
             np.full_like(angles, self.center.lon),
             np.full_like(angles, self.center.lat),
