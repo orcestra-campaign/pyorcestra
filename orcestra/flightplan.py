@@ -4,6 +4,7 @@ from typing import Optional
 import numpy as np
 import xarray as xr
 import pyproj
+from warnings import warn
 
 
 geod = pyproj.Geod(ellps="WGS84")
@@ -179,8 +180,18 @@ def path_as_ds(path):
         return path
 
 
-def track_len(ds):
+def path_len(path):
+    ds = path_as_ds(path)
     return float(ds.distance[-1]) - float(ds.distance[0])
+
+
+def track_len(ds):
+    warn(
+        "track_len is deprecated, please use path_len instead",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return path_len(ds)
 
 
 def plot_path(path, ax, color=None, label=None, show_waypoints=True):
