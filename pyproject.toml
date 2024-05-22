@@ -30,6 +30,10 @@ cartopy = "*"
 pyproj = "*"
 textalloc = "*"
 
+[tool.poetry.group.test.dependencies]
+pytest = "*"
+pytest-watch = "*"
+
 [tool.poetry-dynamic-versioning]
 enable = true
 vcs = "git"
@@ -51,7 +55,7 @@ initial-content = """
 
   __version__ = '0.0.0'
   __version_tuple__ = (0, 0, 0)
-"""
+  """
 
 [tool.poetry.plugins."xarray.backends"]
 ftml = "orcestra.flightplan:FlightTrackEntrypoint"
