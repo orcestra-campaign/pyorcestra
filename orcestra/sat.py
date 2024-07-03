@@ -1,24 +1,21 @@
-from textwrap import dedent
 import fsspec
+import requests
 import re
 import numpy as np
 import xarray as xr
 import pandas as pd
 from functools import lru_cache
 
-EARTH_CARE_TLES = {
-    "sim_operations": dedent(
-        """\
-        1 99999U 99999A   16000.00000000  .00000000  00000-0  00000-0 0  0000
-        2 99999  97.1000 000.0000 0000000   0.0000   0.0000 15.56756757000000
-        """
-    ),
-    # TODO: check inclination and orbital period of calval setup
-    #    "sim_calval": dedent("""\
-    #        1 99999U 99999A   16000.00000000  .00000000  00000-0  00000-0 0  0000
-    #        2 99999  97.1000 000.0000 0000000   0.0000   0.0000 15.56756757000000
-    #        """),
-}
+
+def get_tle(**query):
+    """
+    GET TLE from celestrak.org. Query must be key-value arguments according to
+    https://celestrak.org/NORAD/documentation/gp-data-formats.php
+    e.g. NAME="EARTHCARE"
+    """
+    res = requests.get("https://celestrak.org/NORAD/elements/gp.php", params=query)
+    res.raise_for_status()
+    return res.text
 
 
 class TLETrackLoader:
@@ -69,6 +66,10 @@ class TLETrackLoader:
                 "alt": ("time", location.geodetic.height.to("m").value),
             }
         )
+
+
+def earthcare_track_loader():
+    return TLETrackLoader(get_tle(NAME="EARTHCARE"))
 
 
 class CalipsoTrackLoader:
