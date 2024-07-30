@@ -5,6 +5,7 @@ import numpy as np
 import xarray as xr
 import pandas as pd
 from functools import lru_cache
+from io import StringIO
 
 
 def get_tle(**query):
@@ -112,3 +113,70 @@ class CalipsoTrackLoader:
             df["time"], format="%d %b %Y %H:%M:%S.000", exact=False
         )
         return df.set_index("time").sort_index().to_xarray()
+
+
+class SattrackLoader:
+    def __init__(self, satelite_name, forecast_day):
+        """
+        Loader for satallite tracks from sattracks.orcestra-campaign.org.
+
+        Currently it might be difficult to get valid values for the
+        required parameters. If in doubt, check
+        https://github.com/orcestra-campaign/sattracks.
+
+
+        Parameters
+        ----------
+        satelite_name : str
+            name of the satellite to track (e.g. "EARTHCARE")
+        forecast_day : np.datetime64 | str
+            date on which the forecast for the track has been issued
+        """
+        self.satelite_name = satelite_name
+        self.forecast_day = pd.Timestamp(np.datetime64(forecast_day))
+
+    @lru_cache
+    def get_track_for_day(self, day):
+        """
+        Get track data for a given day
+
+        Parameters
+        ----------
+        forecast_day : np.datetime64 | str
+            date for which the prediction is requested
+
+        Returns
+        -------
+        xr.Dataset
+            Dataset containing forcasted satellite track.
+        """
+        valid_day = pd.Timestamp(np.datetime64(day))
+        url = f"https://sattracks.orcestra-campaign.org/{valid_day:%Y%m%d}/PERCUSION_ORBIT_FCST_{self.satelite_name}_ORBLTP_CAPE_VERDE_ROI_{self.forecast_day:%Y%m%d}_{valid_day:%Y%m%d}.txt"
+        res = requests.get(url)
+        res.raise_for_status()
+        text = res.text
+        df = pd.read_csv(
+            StringIO(text),
+            delim_whitespace=True,
+            header=1,
+            date_format="%H:%M:%S",
+            parse_dates=["GMT"],
+            na_values=[-999],
+        )
+        df["GMT"] = (
+            df["GMT"]
+            - pd.to_datetime("00:00:00", format="%H:%M:%S")
+            + pd.to_datetime(text.split("\n")[0].split()[0].strip(), format="%Y/%m/%d")
+        )
+
+        df = df.rename(
+            {
+                "GMT": "time",
+                "SUBLAT[W+]": "lat",
+                "SUBLON[N+]": "lon",
+                "HEADING": "heading",
+            },
+            axis=1,
+        )
+        df["lon"] = -df["lon"]  # east positive
+        return df.loc[df.lat.notna()].set_index("time").to_xarray()
