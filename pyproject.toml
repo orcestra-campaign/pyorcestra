@@ -17,6 +17,7 @@ numpy = "*"
 xarray = "*"
 astropy = "*"
 sgp4 = "*"
+scipy = "*"
 
 intake = "*"
 requests = "*"
