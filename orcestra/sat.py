@@ -174,6 +174,8 @@ class SattrackLoader:
                 "GMT": "time",
                 "SUBLAT[W+]": "lat",
                 "SUBLON[N+]": "lon",
+                "SUBLAT[N+]": "lat",
+                "SUBLON[W+]": "lon",
                 "HEADING": "heading",
             },
             axis=1,
