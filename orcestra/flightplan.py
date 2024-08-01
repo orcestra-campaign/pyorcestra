@@ -3,10 +3,12 @@ from dataclasses import dataclass
 from typing import Optional
 import numpy as np
 import xarray as xr
+from xarray.backends import BackendEntrypoint
 from scipy.optimize import minimize
 import pyproj
 from warnings import warn
 import xml.etree.ElementTree as ET
+import pathlib
 
 
 geod = pyproj.Geod(ellps="WGS84")
@@ -411,3 +413,21 @@ def open_ftml(path):
     )
 
     return ds
+
+
+class FlightTrackEntrypoint(BackendEntrypoint):
+    def open_dataset(self, filename_or_obj, *, drop_variables=None):
+        return open_ftml(filename_or_obj)
+
+    open_dataset_parameters = ["filename_or_obj"]
+
+    def guess_can_open(self, filename_or_obj):
+        try:
+            ext = pathlib.Path(filename_or_obj).suffix
+        except TypeError:
+            return False
+        return ext in {".ftml"}
+
+    description = "Use .ftml files in Xarray"
+
+    url = "https://github.com/orcestra-campaign/pyorcestra"
