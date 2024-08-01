@@ -136,7 +136,7 @@ def expand_path(path: list[LatLon], dx=None, max_points=None):
 
 
 def _az_towards_point_with_angle(A, B, alpha, radius):
-    """
+    r"""
     Find azimuth value from B such that the angle from B to a A
     around an unknown point X is alpha, such and the distance
     between B and X is radius.
