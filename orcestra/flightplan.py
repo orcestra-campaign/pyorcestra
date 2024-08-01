@@ -6,6 +6,7 @@ import xarray as xr
 from scipy.optimize import minimize
 import pyproj
 from warnings import warn
+import xml.etree.ElementTree as ET
 
 
 geod = pyproj.Geod(ellps="WGS84")
@@ -389,3 +390,24 @@ def path_quickplot(path, sel_time, crossection=True):
             ax2.axvline(point, color="k", lw=1)
 
     return fig
+
+
+def open_ftml(path):
+    """Return an MSS flight track in FTML format as dataset."""
+    tree = ET.parse(path)
+    root = tree.getroot()
+    waypoints = root[0]
+
+    data = {}
+    for attr in ["lat", "lon", "flightlevel", "location"]:
+        data[attr] = [
+            float(way.attrib[attr]) if attr != "location" else way.attrib[attr]
+            for way in waypoints
+        ]
+
+    ds = xr.Dataset(
+        data_vars={k: ("waypoint", v) for k, v in data.items()},
+        coords={"waypoint": np.arange(len(waypoints))},
+    )
+
+    return ds
