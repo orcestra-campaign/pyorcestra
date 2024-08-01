@@ -157,7 +157,7 @@ class SattrackLoader:
         text = res.text
         df = pd.read_csv(
             StringIO(text),
-            delim_whitespace=True,
+            sep=r"\s+",
             header=1,
             date_format="%H:%M:%S",
             parse_dates=["GMT"],
