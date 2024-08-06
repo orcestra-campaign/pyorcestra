@@ -1,3 +1,4 @@
+import warnings
 import fsspec
 import requests
 import re
@@ -164,6 +165,14 @@ class SattrackLoader:
         """
         valid_day = pd.Timestamp(np.datetime64(day))
         index_for_day = self._get_index().loc[(self.satelite_name, valid_day)]
+
+        if (
+            self.forecast_day in index_for_day.index
+            and self.forecast_day < index_for_day.index.max()
+        ):
+            warnings.warn(
+                f"You are using an old forecast (issued on {self.forecast_day.date()}) for {self.satelite_name} on {valid_day.date()}! The newest forecast issued so far was issued on {index_for_day.index.max().date()}."
+            )
 
         url = self.server + index_for_day.loc[self.forecast_day]["forecast_file"]
         res = requests.get(url)
