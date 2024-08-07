@@ -267,8 +267,7 @@ def plot_path(path, ax, color=None, label=None, show_waypoints=True):
         label_color = to_rgba(color)
         line_color = label_color[:3] + (label_color[3] * 0.5,)
 
-        ta.allocate_text(
-            ax.get_figure(),
+        ta.allocate(
             ax,
             lon,
             lat,
