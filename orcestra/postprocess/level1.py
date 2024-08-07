@@ -28,7 +28,7 @@ def _noise_filter_radar(ds):
         Radar data filtered by noise level.
 
     """
-    return ds.where(ds.npw1 < config["noise_threshold"])
+    return ds.where(ds.npw1 > config["noise_threshold"])
 
 
 def _state_filter_radar(ds):
@@ -92,6 +92,23 @@ def _altitude_filter(ds, ds_bahamas):
     ).assign_coords(time=ds.time)
 
     return ds.where(ds_bahamas_subsampled.IRS_ALT > config["altitude_threshold"])
+
+
+def coarsen_radiometer(ds):
+    """Coarsen radiometer data to 1 Hz.
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+        Level0 radiometer dataset.
+
+    Returns
+    -------
+    xr.Dataset
+        Radiometer data coarsened to 1 Hz.
+    """
+
+    return ds.coarsen(time=4, boundary="pad").mean()
 
 
 def filter_radar(ds, ds_bahamas):
