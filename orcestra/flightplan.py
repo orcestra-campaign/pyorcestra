@@ -306,7 +306,7 @@ def plot_cwv(var, ax=None, levels=None):
     plt.clabel(contour_lines, inline=True, fontsize=8, colors="grey", fmt="%d")
 
 
-def path_preview(path, coastlines=True, gridlines=True, ax=None):
+def path_preview(path, coastlines=True, gridlines=True, ax=None, size=8, aspect=16 / 9):
     import matplotlib.pylab as plt
     import cartopy.crs as ccrs
 
@@ -320,16 +320,24 @@ def path_preview(path, coastlines=True, gridlines=True, ax=None):
     dlon = lon_max - lon_min
     dlat = lat_max - lat_min
 
+    if dlon / dlat > aspect:
+        dlat = dlon / aspect
+    else:
+        dlon = dlat * aspect
+
+    clon = (lon_min + lon_max) / 2
+    clat = (lat_min + lat_max) / 2
+
     map_extent = [
-        lon_min - 0.2 * dlon,
-        lon_max + 0.2 * dlon,
-        lat_min - 0.2 * dlat,
-        lat_max + 0.2 * dlat,
+        clon - 0.6 * dlon,
+        clon + 0.6 * dlon,
+        clat - 0.6 * dlat,
+        clat + 0.6 * dlat,
     ]
 
     if ax is None:
         fig, ax = plt.subplots(
-            figsize=(10, 10 * dlat / dlon),
+            figsize=(size * aspect, size),
             subplot_kw={"projection": ccrs.PlateCarree()},
         )
     ax.set_extent(map_extent, crs=ccrs.PlateCarree())
