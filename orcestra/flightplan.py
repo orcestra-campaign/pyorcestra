@@ -14,6 +14,18 @@ import pathlib
 geod = pyproj.Geod(ellps="WGS84")
 
 
+def no_cartopy_download_warning():
+    import warnings
+    from cartopy.io import DownloadWarning
+
+    warnings.filterwarnings(
+        action="ignore",
+        message="",
+        category=DownloadWarning,
+        module="cartopy",
+    )
+
+
 @dataclass(frozen=True)
 class LatLon:
     lat: float
@@ -343,8 +355,10 @@ def path_preview(path, coastlines=True, gridlines=True, ax=None, size=8, aspect=
     ax.set_extent(map_extent, crs=ccrs.PlateCarree())
 
     if coastlines:
+        no_cartopy_download_warning()
         ax.coastlines(alpha=1.0)
     if gridlines:
+        no_cartopy_download_warning()
         ax.gridlines(draw_labels=True, alpha=0.25)
 
     plot_path(path, ax=ax, label="path", color="C1")
@@ -376,6 +390,7 @@ def path_quickplot(path, sel_time, crossection=True):
     ax1 = fig.add_subplot(2, 1, 1, projection=ccrs.PlateCarree())
     ax1.set_extent(map_extent, crs=ccrs.PlateCarree())
 
+    no_cartopy_download_warning()
     ax1.coastlines(alpha=1.0)
     ax1.gridlines(
         draw_labels=True, dms=True, x_inline=False, y_inline=False, alpha=0.25
