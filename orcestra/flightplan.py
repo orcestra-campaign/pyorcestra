@@ -14,6 +14,18 @@ import pathlib
 geod = pyproj.Geod(ellps="WGS84")
 
 
+def no_cartopy_download_warning():
+    import warnings
+    from cartopy.io import DownloadWarning
+
+    warnings.filterwarnings(
+        action="ignore",
+        message="",
+        category=DownloadWarning,
+        module="cartopy",
+    )
+
+
 @dataclass(frozen=True)
 class LatLon:
     lat: float
@@ -267,8 +279,7 @@ def plot_path(path, ax, color=None, label=None, show_waypoints=True):
         label_color = to_rgba(color)
         line_color = label_color[:3] + (label_color[3] * 0.5,)
 
-        ta.allocate_text(
-            ax.get_figure(),
+        ta.allocate(
             ax,
             lon,
             lat,
@@ -307,7 +318,7 @@ def plot_cwv(var, ax=None, levels=None):
     plt.clabel(contour_lines, inline=True, fontsize=8, colors="grey", fmt="%d")
 
 
-def path_preview(path, coastlines=True, gridlines=True, ax=None):
+def path_preview(path, coastlines=True, gridlines=True, ax=None, size=8, aspect=16 / 9):
     import matplotlib.pylab as plt
     import cartopy.crs as ccrs
 
@@ -321,23 +332,33 @@ def path_preview(path, coastlines=True, gridlines=True, ax=None):
     dlon = lon_max - lon_min
     dlat = lat_max - lat_min
 
+    if dlon / dlat > aspect:
+        dlat = dlon / aspect
+    else:
+        dlon = dlat * aspect
+
+    clon = (lon_min + lon_max) / 2
+    clat = (lat_min + lat_max) / 2
+
     map_extent = [
-        lon_min - 0.2 * dlon,
-        lon_max + 0.2 * dlon,
-        lat_min - 0.2 * dlat,
-        lat_max + 0.2 * dlat,
+        clon - 0.6 * dlon,
+        clon + 0.6 * dlon,
+        clat - 0.6 * dlat,
+        clat + 0.6 * dlat,
     ]
 
     if ax is None:
         fig, ax = plt.subplots(
-            figsize=(10, 10 * dlat / dlon),
+            figsize=(size * aspect, size),
             subplot_kw={"projection": ccrs.PlateCarree()},
         )
     ax.set_extent(map_extent, crs=ccrs.PlateCarree())
 
     if coastlines:
+        no_cartopy_download_warning()
         ax.coastlines(alpha=1.0)
     if gridlines:
+        no_cartopy_download_warning()
         ax.gridlines(draw_labels=True, alpha=0.25)
 
     plot_path(path, ax=ax, label="path", color="C1")
@@ -369,6 +390,7 @@ def path_quickplot(path, sel_time, crossection=True):
     ax1 = fig.add_subplot(2, 1, 1, projection=ccrs.PlateCarree())
     ax1.set_extent(map_extent, crs=ccrs.PlateCarree())
 
+    no_cartopy_download_warning()
     ax1.coastlines(alpha=1.0)
     ax1.gridlines(
         draw_labels=True, dms=True, x_inline=False, y_inline=False, alpha=0.25
