@@ -174,7 +174,11 @@ def correct_radar_height(ds, ds_bahamas):
     ds_bahamas_subsampled = ds_bahamas.sel(
         time=ds.time, method="nearest"
     ).assign_coords(time=ds.time)
-    flight_altitude = ds_bahamas_subsampled.IRS_ALT
+    flight_los = (
+        ds_bahamas_subsampled.IRS_ALT
+        / np.cos(np.radians(ds_bahamas_subsampled.IRS_THE))
+        / np.cos(np.radians(ds_bahamas_subsampled.IRS_PHI))
+    )
 
     ds_z_grid = xr.DataArray(
         data=np.tile(z_grid, (len(ds.time), 1)),
@@ -189,4 +193,4 @@ def correct_radar_height(ds, ds_bahamas):
         / np.cos(np.radians(ds_bahamas_subsampled.IRS_PHI)),
     )
 
-    return ds.sel(range=flight_altitude - ds_range, method="nearest")
+    return ds.sel(range=flight_los - ds_range, method="nearest")
