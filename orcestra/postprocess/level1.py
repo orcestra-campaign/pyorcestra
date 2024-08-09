@@ -108,7 +108,7 @@ def coarsen_radiometer(ds):
         Radiometer data coarsened to 1 Hz.
     """
 
-    return ds.coarsen(time=4, boundary="pad").mean()
+    return ds.coarsen(time=4, boundary="pad").mean().drop_duplicates("time")
 
 
 def filter_radar(ds, ds_bahamas):
@@ -129,6 +129,7 @@ def filter_radar(ds, ds_bahamas):
         ds.pipe(_noise_filter_radar)
         .pipe(_state_filter_radar)
         .pipe(_roll_filter, ds_bahamas)
+        .dropna(dim="time", how="all")
     )
 
 
@@ -146,7 +147,11 @@ def filter_radiometer(ds, ds_bahamas):
         Radiometer data filtered for height and roll angle.
     """
 
-    return ds.pipe(_altitude_filter, ds_bahamas).pipe(_roll_filter, ds_bahamas)
+    return (
+        ds.pipe(_altitude_filter, ds_bahamas)
+        .pipe(_roll_filter, ds_bahamas)
+        .dropna(dim="time", how="all")
+    )
 
 
 def correct_radar_height(ds, ds_bahamas):
