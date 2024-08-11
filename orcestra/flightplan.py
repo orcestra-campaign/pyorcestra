@@ -529,10 +529,10 @@ def find_edges(cwv, cwv_thresh, cwv_min=0, lat_cwv_max=9.0):
             cwv_lat_max = dist_peaks.lat[np.argmin(dist_peaks.values)]
 
             cwv_north = cwv.where(
-                (cwv.lat >= cwv_lat_max) & (cwv > cwv_min), drop=True
+                (cwv.lat >= cwv_lat_max).compute() & (cwv > cwv_min).compute(), drop=True
             )
             cwv_south = cwv.where(
-                (cwv.lat <= cwv_lat_max) & (cwv > cwv_min), drop=True
+                (cwv.lat <= cwv_lat_max).compute() & (cwv > cwv_min).compute(), drop=True
             )
 
             lat_north = float(
