@@ -2,6 +2,7 @@ import numpy as np
 import xarray as xr
 import json
 import os
+import pandas as pd
 
 # Get the directory of the current script
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -109,6 +110,46 @@ def coarsen_radiometer(ds):
     """
 
     return ds.coarsen(time=4, boundary="pad").mean().drop_duplicates("time")
+
+
+def resample_radiometer(ds, freq=pd.Timedelta("1s")):
+    """
+    Resample radiometer data to a given frequency using pandas dataframe resample method to speed up the process.
+
+    Parameters
+    ----------
+    ds : xarray.Dataset
+        level 0 radiometer data
+    freq : pandas.Timedelta
+        resampling frequency, default is 1 second
+
+    Returns
+    -------
+    xarray.Dataset
+        resampled radiometer data
+    """
+
+    TBs = [
+        ds.TBs.sel(frequency=f)
+        .to_dataframe()
+        .resample(freq)
+        .mean()
+        .to_xarray()
+        .drop_vars("frequency")
+        .expand_dims(dim={"frequency": pd.Index([f], name="frequency")})
+        for f in ds.frequency
+    ]
+    ds_resampled = xr.concat(TBs, dim="frequency")
+    freq_less_vars = [
+        "ultra_sampling_factor",
+        "rain_flag",
+        "elevation_angle",
+        "azimuth_angle",
+    ]
+    ds_resampled = ds_resampled.assign(
+        ds[freq_less_vars].to_dataframe().resample(freq).mean().to_xarray()
+    )
+    return ds_resampled
 
 
 def filter_radar(ds, ds_bahamas):
