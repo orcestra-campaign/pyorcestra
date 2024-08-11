@@ -491,21 +491,13 @@ def calc_zonal_mean(field, lon_min, lon_max, lat_min, lat_max):
 
     bbox = [lon_min, lon_max, lat_min, lat_max]
 
-    if "lon"  in field.coords:
-        field = field.rename({'lon': 'longitude'})
-    if "lat"  in field.coords:
-        field = field.rename({'lat': 'latitude'})
-
     in_bbox = egh.isel_extent(field, bbox) 
 
     field_bbox = field.sel(
         cell=in_bbox,
     )
 
-    field_lat = field_bbox.groupby(
-        field_bbox.latitude
-    ).mean(
-    )
+    field_lat = field_bbox.groupby(field_bbox.lat).mean()
     return field_lat
 
 def find_edges(cwv, cwv_thresh, cwv_min = 0, lat_cwv_max = 9.0):
@@ -531,13 +523,13 @@ def find_edges(cwv, cwv_thresh, cwv_min = 0, lat_cwv_max = 9.0):
             lat_north, lat_south = np.nan, np.nan
 
         else:
-            dist_peaks = np.abs(lat_cwv_max - cwv.latitude[peaks_i])
-            cwv_lat_max = dist_peaks.latitude[np.argmin(dist_peaks.values)]
+            dist_peaks = np.abs(lat_cwv_max - cwv.lat[peaks_i])
+            cwv_lat_max = dist_peaks.lat[np.argmin(dist_peaks.values)]
 
-            cwv_north = cwv.where((cwv.latitude >= cwv_lat_max) & (cwv > cwv_min), drop = True)
-            cwv_south = cwv.where((cwv.latitude <= cwv_lat_max) & (cwv > cwv_min), drop = True)
+            cwv_north = cwv.where((cwv.lat >= cwv_lat_max) & (cwv > cwv_min), drop = True)
+            cwv_south = cwv.where((cwv.lat <= cwv_lat_max) & (cwv > cwv_min), drop = True)
 
-            lat_north = float(cwv_north.latitude.where(cwv_north<=cwv_thresh).min().values)
-            lat_south = float(cwv_south.latitude.where(cwv_south>=cwv_thresh).min().values)
+            lat_north = float(cwv_north.lat.where(cwv_north<=cwv_thresh).min().values)
+            lat_south = float(cwv_south.lat.where(cwv_south>=cwv_thresh).min().values)
 
     return lat_south, lat_north
