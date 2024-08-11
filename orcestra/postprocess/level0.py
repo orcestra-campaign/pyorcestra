@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 
 
 def _bahamas_fix_time(ds):
@@ -41,6 +42,30 @@ def radar_ql(ds):
     )
 
 
+def _fix_radiometer_time(ds):
+    """Replace duplicates in time coordinate of radiometer datasets with correct time"""
+    time_broken = ds.time.values
+    first_occurence = time_broken[0]
+    n = 0
+    time_new = []
+    for i in range(len(time_broken)):
+        if time_broken[i] == first_occurence:
+            time_new.append(time_broken[i] + pd.Timedelta("0.25s") * n)
+            n += 1
+        else:
+            n = 0
+            first_occurence = time_broken[i]
+            time_new.append(time_broken[i] + pd.Timedelta("0.25s") * n)
+
+    return ds.assign_coords(time=time_new).sortby("time")
+
+
 def radiometer(ds):
     """Post-processing of radiometer datasets."""
-    return ds.rename(number_frequencies="frequency").set_index(frequency="frequencies")
+    return (
+        ds.rename(number_frequencies="frequency")
+        .set_index(frequency="frequencies")
+        .pipe(
+            _fix_radiometer_time,
+        )
+    )
