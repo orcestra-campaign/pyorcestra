@@ -1,0 +1,6 @@
+{
+    "roll_threshold": 5,
+    "valid_radar_state": 13, 
+    "noise_threshold": 100,
+    "altitude_threshold": 4800
+}
