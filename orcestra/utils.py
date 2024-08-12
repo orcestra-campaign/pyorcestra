@@ -29,4 +29,5 @@ def parse_datestr(datestr):
     if tz is not None:
         return date.replace(tzinfo=zoneinfo.ZoneInfo(tz))
     else:
-        return date
+        # Attach time zone to local time for object comparison
+        return date.astimezone()
