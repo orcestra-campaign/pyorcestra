@@ -119,7 +119,7 @@ class CalipsoTrackLoader:
 class SattrackLoader:
     server = "https://sattracks.orcestra-campaign.org/"
 
-    def __init__(self, satelite_name, forecast_day):
+    def __init__(self, satelite_name, forecast_day, kind="LTP"):
         """
         Loader for satallite tracks from sattracks.orcestra-campaign.org.
 
@@ -137,6 +137,7 @@ class SattrackLoader:
         """
         self.satelite_name = satelite_name
         self.forecast_day = pd.Timestamp(np.datetime64(forecast_day))
+        self.kind = kind
 
     @lru_cache
     def _get_index(self):
@@ -144,7 +145,7 @@ class SattrackLoader:
             pd.read_csv(
                 self.server + "index.csv", parse_dates=["forecast_day", "valid_day"]
             )
-            .set_index(["sat", "valid_day", "forecast_day"])
+            .set_index(["sat", "valid_day", "forecast_day", "kind"])
             .sort_index()
         )
 
@@ -168,13 +169,16 @@ class SattrackLoader:
 
         if (
             self.forecast_day in index_for_day.index
-            and self.forecast_day < index_for_day.index.max()
+            and self.forecast_day < index_for_day.index.max()[0]
         ):
             warnings.warn(
-                f"You are using an old forecast (issued on {self.forecast_day.date()}) for {self.satelite_name} on {valid_day.date()}! The newest forecast issued so far was issued on {index_for_day.index.max().date()}."
+                f"You are using an old forecast (issued on {self.forecast_day.date()}) for {self.satelite_name} on {valid_day.date()}! The newest forecast issued so far was issued on {index_for_day.index.max()[0].date()}. It's a {index_for_day.index.max()[1]} forecast."
             )
 
-        url = self.server + index_for_day.loc[self.forecast_day]["forecast_file"]
+        url = (
+            self.server
+            + index_for_day.loc[self.forecast_day, self.kind]["forecast_file"]
+        )
         res = requests.get(url)
         res.raise_for_status()
         text = res.text
