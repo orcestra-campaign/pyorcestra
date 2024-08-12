@@ -1,4 +1,5 @@
 from .flightplan import LatLon, bco, sal
+from .utils import parse_datestr
 
 import warnings
 
@@ -12,4 +13,4 @@ warnings.filterwarnings(
     module="intake_xarray",
 )
 
-__all__ = ["LatLon", "bco", "sal"]
+__all__ = ["LatLon", "bco", "sal", "parse_datestr"]
