@@ -27,18 +27,30 @@ def test_point_at_distance(geod):
 
 
 def test_assign_label_old():
-    a = fp.LatLon(3, 7)
+    a = fp.LatLon(3, 7, fl=300)
     b = a.assign_label("test")
     assert b.label == "test"
     assert a.label is None
     assert a.lat == b.lat == 3
     assert a.lon == b.lon == 7
+    assert a.fl == b.fl == 300
 
 
 def test_assign_label():
-    a = fp.LatLon(3, 7)
+    a = fp.LatLon(3, 7, fl=300)
     b = a.assign(label="test")
     assert b.label == "test"
     assert a.label is None
     assert a.lat == b.lat == 3
     assert a.lon == b.lon == 7
+    assert a.fl == b.fl == 300
+
+
+def test_assign_flightlevel():
+    a = fp.LatLon(3, 7, label="test")
+    b = a.assign(fl=350)
+    assert b.fl == 350
+    assert a.fl is None
+    assert a.lat == b.lat == 3
+    assert a.lon == b.lon == 7
+    assert a.label == b.label == "test"

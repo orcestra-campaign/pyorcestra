@@ -32,6 +32,7 @@ class LatLon:
     lat: float
     lon: float
     label: Optional[str] = None
+    fl: Optional[float] = None
 
     def towards(self, other, fraction=None, distance=None) -> LatLon:
         if fraction is None and distance is None:
