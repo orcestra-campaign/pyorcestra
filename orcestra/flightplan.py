@@ -1,4 +1,5 @@
 from __future__ import annotations
+import dataclasses
 from dataclasses import dataclass
 from typing import Optional
 import numpy as np
@@ -48,7 +49,9 @@ class LatLon:
         return LatLon(lat, lon)
 
     def assign_label(self, label: str) -> LatLon:
-        return LatLon(self.lat, self.lon, label)
+        return self.assign(label=label)
+
+    assign = dataclasses.replace
 
 
 bco = LatLon(13.079773, -59.487634, "BCO")

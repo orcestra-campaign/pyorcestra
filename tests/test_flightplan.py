@@ -26,9 +26,18 @@ def test_point_at_distance(geod):
     npt.assert_allclose(spath[1].lon, geod.fwd(1, 0, -90, 50e3)[0])
 
 
-def test_assign_label():
+def test_assign_label_old():
     a = fp.LatLon(3, 7)
     b = a.assign_label("test")
+    assert b.label == "test"
+    assert a.label is None
+    assert a.lat == b.lat == 3
+    assert a.lon == b.lon == 7
+
+
+def test_assign_label():
+    a = fp.LatLon(3, 7)
+    b = a.assign(label="test")
     assert b.label == "test"
     assert a.label is None
     assert a.lat == b.lat == 3
