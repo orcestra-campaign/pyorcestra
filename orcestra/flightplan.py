@@ -13,6 +13,8 @@ import xarray as xr
 from scipy.optimize import minimize
 from xarray.backends import BackendEntrypoint
 
+from .flight_performance import get_current_performance
+
 
 geod = pyproj.Geod(ellps="WGS84")
 
@@ -59,6 +61,18 @@ class LatLon:
 
 bco = LatLon(13.079773, -59.487634, "BCO", fl=0)
 sal = LatLon(16.73448797020352, -22.94397423993749, "SAL", fl=0)
+
+
+def attach_flight_performance(ds, performance):
+    second = np.timedelta64(1000000000, "ns")
+    ds = ds.assign(speed=(ds.fl.dims, performance.speed_at_fl(ds.fl)))
+    segment_distance = np.diff(ds.distance.values)
+    mean_speed = (ds.speed.values[:-1] + ds.speed.values[1:]) / 2
+    duration = (
+        np.cumsum(np.concatenate([[0], (segment_distance / mean_speed)])) * second
+    )
+    ds = ds.assign(duration=(ds.fl.dims, duration))
+    return ds
 
 
 def expand_path(path: list[LatLon], dx=None, max_points=None):
@@ -150,7 +164,7 @@ def expand_path(path: list[LatLon], dx=None, max_points=None):
         indices = np.array(indices)
         labels = np.array(labels)
 
-    return xr.Dataset(
+    ds = xr.Dataset(
         {
             "waypoint_indices": ("waypoint", indices),
             "waypoint_labels": ("waypoint", labels),
@@ -162,6 +176,11 @@ def expand_path(path: list[LatLon], dx=None, max_points=None):
             "fl": ("distance", fls),
         },
     )
+
+    if performance := get_current_performance():
+        ds = ds.pipe(attach_flight_performance, performance)
+
+    return ds
 
 
 def _az_towards_point_with_angle(A, B, alpha, radius):
