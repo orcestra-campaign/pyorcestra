@@ -1,15 +1,17 @@
 from __future__ import annotations
 import dataclasses
+import pathlib
+import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from typing import Optional
-import numpy as np
-import xarray as xr
-from xarray.backends import BackendEntrypoint
-from scipy.optimize import minimize
-import pyproj
 from warnings import warn
-import xml.etree.ElementTree as ET
-import pathlib
+
+import numpy as np
+import pyproj
+import scipy.signal
+import xarray as xr
+from scipy.optimize import minimize
+from xarray.backends import BackendEntrypoint
 
 
 geod = pyproj.Geod(ellps="WGS84")
@@ -485,3 +487,59 @@ class FlightTrackEntrypoint(BackendEntrypoint):
     description = "Use .ftml files in Xarray"
 
     url = "https://github.com/orcestra-campaign/pyorcestra"
+
+
+def calc_zonal_mean(field, lon_min, lon_max, lat_min, lat_max):
+    import easygems.healpix as egh
+
+    bbox = [lon_min, lon_max, lat_min, lat_max]
+
+    in_bbox = egh.isel_extent(field, bbox)
+
+    field_bbox = field.sel(
+        cell=in_bbox,
+    )
+
+    field_lat = field_bbox.groupby(field_bbox.lat).mean()
+    return field_lat
+
+
+def find_edges(cwv, cwv_thresh, cwv_min=0, lat_cwv_max=9.0):
+    """
+    Determine latitude of peak in CWV that is closest to the latitude of peak CWV in the average CWV profile (lat_cwv_max).
+    Assess where the moist tropics end by dropping all latitudes where CWV drops below cwv_min.
+    Within the remaining moist band, assess the northernmost and southernmost latitude at which CWV is equal to cwv_thresh.
+
+    If CWV is below cwv_thresh everywhere, return NAN values.
+    """
+
+    if cwv.max().values <= cwv_thresh:
+        lat_north, lat_south = np.nan, np.nan
+
+    else:
+        peaks_i, peaks_props = scipy.signal.find_peaks(
+            cwv, height=cwv_thresh, prominence=2
+        )
+
+        if len(peaks_i) == 0:
+            lat_north, lat_south = np.nan, np.nan
+
+        else:
+            dist_peaks = np.abs(lat_cwv_max - cwv.lat[peaks_i])
+            cwv_lat_max = dist_peaks.lat[np.argmin(dist_peaks.values)]
+
+            cwv_north = cwv.where(
+                (cwv.lat >= cwv_lat_max).compute() & (cwv > cwv_min).compute(), drop=True
+            )
+            cwv_south = cwv.where(
+                (cwv.lat <= cwv_lat_max).compute() & (cwv > cwv_min).compute(), drop=True
+            )
+
+            lat_north = float(
+                cwv_north.lat.where(cwv_north <= cwv_thresh).min().values
+            )
+            lat_south = float(
+                cwv_south.lat.where(cwv_south >= cwv_thresh).min().values
+            )
+
+    return lat_south, lat_north
