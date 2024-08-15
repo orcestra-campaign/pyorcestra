@@ -1,4 +1,5 @@
 from __future__ import annotations
+import dataclasses
 from dataclasses import dataclass
 from typing import Optional
 import numpy as np
@@ -31,6 +32,7 @@ class LatLon:
     lat: float
     lon: float
     label: Optional[str] = None
+    fl: Optional[float] = None
 
     def towards(self, other, fraction=None, distance=None) -> LatLon:
         if fraction is None and distance is None:
@@ -48,11 +50,13 @@ class LatLon:
         return LatLon(lat, lon)
 
     def assign_label(self, label: str) -> LatLon:
-        return LatLon(self.lat, self.lon, label)
+        return self.assign(label=label)
+
+    assign = dataclasses.replace
 
 
-bco = LatLon(13.079773, -59.487634, "BCO")
-sal = LatLon(16.73448797020352, -22.94397423993749, "SAL")
+bco = LatLon(13.079773, -59.487634, "BCO", fl=0)
+sal = LatLon(16.73448797020352, -22.94397423993749, "SAL", fl=0)
 
 
 def expand_path(path: list[LatLon], dx=None, max_points=None):
@@ -63,11 +67,13 @@ def expand_path(path: list[LatLon], dx=None, max_points=None):
     path = simplify_path(path)
     lon_points = np.asarray([p.lon for p in path])
     lat_points = np.asarray([p.lat for p in path])
+    fl_points = np.asarray([p.fl if p.fl is not None else np.nan for p in path])
     labels = [p.label for p in path]
 
     if len(path) < 2:
         lons = lon_points
         lats = lat_points
+        fls = fl_points
         dists = np.zeros_like(lon_points)
         indices = np.arange(len(lon_points))
     else:
@@ -93,16 +99,19 @@ def expand_path(path: list[LatLon], dx=None, max_points=None):
 
         lons = []
         lats = []
+        fls = []
         dists = []
         indices = []
 
         distance_so_far = 0
         indices_so_far = 0
-        for lon1, lat1, lon2, lat2, n, d in zip(
+        for lon1, lat1, fl1, lon2, lat2, fl2, n, d in zip(
             lon_points[:-1],
             lat_points[:-1],
+            fl_points[:-1],
             lon_points[1:],
             lat_points[1:],
+            fl_points[1:],
             points_per_segment,
             dist,
         ):
@@ -111,6 +120,7 @@ def expand_path(path: list[LatLon], dx=None, max_points=None):
             lons.append(lon)
             lats.append([lat1])
             lats.append(lat)
+            fls.append(np.linspace(fl1, fl2, n + 2)[:-1])
             dists.append(distance_so_far + np.linspace(0.0, d, n + 2)[:-1])
             indices.append(indices_so_far)
             distance_so_far += d
@@ -118,11 +128,13 @@ def expand_path(path: list[LatLon], dx=None, max_points=None):
 
         lons.append([lon_points[-1]])
         lats.append([lat_points[-1]])
+        fls.append([fl_points[-1]])
         dists.append([distance_so_far])
         indices.append(indices_so_far)
 
         lons = np.concatenate(lons)
         lats = np.concatenate(lats)
+        fls = np.concatenate(fls)
         dists = np.concatenate(dists)
 
         il = list(
@@ -145,6 +157,7 @@ def expand_path(path: list[LatLon], dx=None, max_points=None):
             "distance": ("distance", dists),
             "lon": ("distance", lons),
             "lat": ("distance", lats),
+            "fl": ("distance", fls),
         },
     )
 
@@ -208,7 +221,7 @@ class IntoCircle:
             angles,
             np.full_like(angles, self.radius),
         )
-        points = list(map(LatLon, lats, lons))
+        points = [LatLon(lat, lon, fl=self.center.fl) for lat, lon in zip(lats, lons)]
         if self.center.label is not None:
             points[0] = points[0].assign_label(f"{self.center.label}_in")
             points[-1] = points[-1].assign_label(f"{self.center.label}_out")
@@ -316,6 +329,25 @@ def plot_cwv(var, ax=None, levels=None):
         ax=ax,
     )
     plt.clabel(contour_lines, inline=True, fontsize=8, colors="grey", fmt="%d")
+
+
+def vertical_preview(path):
+    import matplotlib.pylab as plt
+
+    path = path_as_ds(path)
+
+    fig, ax = plt.subplots(figsize=(15, 6))
+
+    secax = ax.secondary_xaxis("top")
+    secax.set_xlabel("waypoints")
+    secax.set_xticks(
+        path.distance[path.waypoint_indices],
+        path.waypoint_labels.values,
+        rotation="vertical",
+    )
+    for point in path.distance[path.waypoint_indices]:
+        ax.axvline(point, color="k", lw=1)
+    ax.plot(path.distance, path.fl, color="C1", lw=2)
 
 
 def path_preview(path, coastlines=True, gridlines=True, ax=None, size=8, aspect=16 / 9):
