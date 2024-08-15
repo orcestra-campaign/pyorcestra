@@ -1,6 +1,10 @@
 import datetime
+import pathlib
 import re
 import zoneinfo
+from functools import lru_cache
+
+import yaml
 
 
 def parse_datestr(datestr):
@@ -30,3 +34,18 @@ def parse_datestr(datestr):
         return date.replace(tzinfo=zoneinfo.ZoneInfo(tz))
     else:
         return date
+
+
+@lru_cache
+def load_frontmatter(path):
+    """Load and return the front matter section of a YAML file."""
+    with pathlib.Path(path).open("r") as fp:
+        frontmatter = next(yaml.safe_load_all(fp))
+
+    frontmatter["filepath"] = pathlib.Path(path).as_posix()
+
+    for key in ("takeoff", "landing"):
+        if key in frontmatter:
+            frontmatter[key] = parse_datestr(frontmatter[key])
+
+    return frontmatter
