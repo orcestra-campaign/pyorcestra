@@ -56,6 +56,9 @@ class LatLon:
     def assign_label(self, label: str) -> LatLon:
         return self.assign(label=label)
 
+    def assign_fl(self, fl: float) -> LatLon:
+        return self.assign(fl=fl)
+
     assign = dataclasses.replace
 
 
