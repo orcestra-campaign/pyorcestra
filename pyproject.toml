@@ -19,7 +19,7 @@ astropy = "*"
 sgp4 = "*"
 scipy = "*"
 
-intake = "*"
+intake = "<2.0.0"
 requests = "*"
 aiohttp = "*"
 intake-xarray = "*"
