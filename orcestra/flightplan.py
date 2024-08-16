@@ -30,6 +30,11 @@ def no_cartopy_download_warning():
         module="cartopy",
     )
 
+def get_deg(decimal):
+    return int(decimal)
+
+def get_min(decimal):
+    return abs(decimal - int(decimal)) * 60
 
 @dataclass(frozen=True)
 class LatLon:
@@ -55,6 +60,21 @@ class LatLon:
 
     def assign_label(self, label: str) -> LatLon:
         return self.assign(label=label)
+
+    def to_fx_format(self, num_dec):
+        north_or_south = "N" if self.lat >= 0 else "S"
+        east_or_west = "E" if self.lon >= 0 else "W"
+        
+        def get_rounded(mins):
+            return round(mins, num_dec) if num_dec > 0 else int(round(mins, num_dec))
+
+        lat_deg = f"{abs(get_deg(self.lat)):02d}"
+        lat_min = f"{get_rounded(get_min(self.lat)):02}"
+
+        lon_deg = f"{abs(get_deg(self.lon)):03d}"
+        lon_min = f"{get_rounded(get_min(self.lon)):02}"
+        
+        return f"{lat_deg}{lat_min}{north_or_south}{lon_deg}{lon_min}{east_or_west}"
 
     assign = dataclasses.replace
 
