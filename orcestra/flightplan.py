@@ -522,6 +522,14 @@ def calc_zonal_mean(field, lon_min, lon_max, lat_min, lat_max):
     field_lat = field_bbox.groupby(field_bbox.lat).mean()
     return field_lat
 
+# Function that finds longitude of ec track that corresponds to the provided latitude
+def find_ec_lon(lat_sel, ec_lons, ec_lats):
+    if not np.all(np.diff(ec_lats) > 0):
+        ec_lons = ec_lons[::-1]
+        ec_lats = ec_lats[::-1]
+    assert np.all(np.diff(ec_lats) > 0), "ec_lats are not monotonic"
+    return np.interp(lat_sel, ec_lats, ec_lons)
+
 
 def find_edges(cwv, cwv_thresh, cwv_min=0, lat_cwv_max=9.0):
     """
