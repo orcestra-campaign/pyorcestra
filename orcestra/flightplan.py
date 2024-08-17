@@ -5,6 +5,7 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from typing import Optional
 from warnings import warn
+import datetime
 
 import numpy as np
 import pyproj
@@ -14,6 +15,7 @@ from scipy.optimize import minimize
 from xarray.backends import BackendEntrypoint
 
 from .flight_performance import get_current_performance
+from .utils import parse_datestr
 
 
 geod = pyproj.Geod(ellps="WGS84")
@@ -45,6 +47,17 @@ class LatLon:
     lon: float
     label: Optional[str] = None
     fl: Optional[float] = None
+    time: Optional[datetime.datetime | str] = None
+
+    def __post_init__(self):
+        if isinstance(self.time, str):
+            super().__setattr__("time", parse_datestr(self.time))
+        if self.time is not None and (
+            self.time.tzinfo is None or self.time.tzinfo.utcoffset(self.time) is None
+        ):
+            warn(
+                f"Time {self.time} of {self} is naive (i.e. NOT timezone aware!). Please consider specifying a time zone to avoid confision."
+            )
 
     def towards(self, other, fraction=None, distance=None) -> LatLon:
         if fraction is None and distance is None:
@@ -203,6 +216,27 @@ def expand_path(path: list[LatLon], dx=None, max_points=None):
     if performance := get_current_performance():
         ds = ds.pipe(attach_flight_performance, performance)
 
+    points_with_time = [(i, p) for i, p in enumerate(path) if p.time is not None]
+    if len(points_with_time) > 1:
+        raise ValueError(
+            "Multiple waypoints have an associated time. Currently, only a single point with an associated time is implemented!"
+        )
+    elif len(points_with_time) == 1:
+        i, point = points_with_time[0]
+        if point.time.tzinfo is None or point.time.tzinfo.utcoffset(point.time) is None:
+            warn(
+                f"Time {point.time} of {point} is naive (i.e. NOT timezone aware!). Assuming UTC."
+            )
+            reftime = np.datetime64(point.time)
+        else:
+            reftime = np.datetime64(
+                point.time.astimezone(datetime.timezone.utc).replace(tzinfo=None)
+            )
+
+        if "duration" in ds:
+            offset = ds.duration.values[ds.waypoint_indices[i]]
+            ds = ds.assign(time=ds.duration - offset + reftime)
+
     return ds
 
 
@@ -242,6 +276,11 @@ class IntoCircle:
     radius: float
     angle: float
     enter: Optional[float] = None
+
+    def __post_init__(self):
+        assert (
+            self.center.time is None
+        ), "The time attribute of the center coordinate of a circle MUST be None. I.e. a circle will have a duration, thus you can't assign it a point in time."
 
     def __call__(self, start: LatLon, include_start: bool = False):
         if self.enter is None:
