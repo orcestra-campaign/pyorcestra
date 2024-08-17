@@ -33,7 +33,7 @@ def _radar_ql_add_dBZ(ds):
     )
 
 
-def radar_ql(ds):
+def radar(ds):
     """Post-processing of Radar quick look datasets."""
     return ds.pipe(
         _radar_ql_fix_time,
@@ -53,9 +53,9 @@ def _fix_radiometer_time(ds):
             time_new.append(time_broken[i] + pd.Timedelta("0.25s") * n)
             n += 1
         else:
-            n = 0
+            n = 1
             first_occurence = time_broken[i]
-            time_new.append(time_broken[i] + pd.Timedelta("0.25s") * n)
+            time_new.append(first_occurence)
 
     return ds.assign_coords(time=time_new).sortby("time")
 
@@ -64,7 +64,7 @@ def radiometer(ds):
     """Post-processing of radiometer datasets."""
     return (
         ds.rename(number_frequencies="frequency")
-        .set_index(frequency="frequencies")
+        .set_index(frequency="Freq")
         .pipe(
             _fix_radiometer_time,
         )
