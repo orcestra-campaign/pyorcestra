@@ -517,6 +517,45 @@ def to_kml(path):
     return kml.kml()
 
 
+def to_geojson(path):
+    import json
+
+    ds = path_as_ds(path)
+
+    return json.dumps(
+        {
+            "type": "FeatureCollection",
+            "features": [
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "LineString",
+                        "coordinates": [
+                            [float(lon), float(lat)]
+                            for lon, lat in zip(ds.lon.values, ds.lat.values)
+                        ],
+                    },
+                    "properties": {},
+                },
+                *[
+                    {
+                        "type": "Feature",
+                        "geometry": {
+                            "type": "Point",
+                            "coordinates": [
+                                float(ds.lon.values[it]),
+                                float(ds.lat.values[it]),
+                            ],
+                        },
+                        "properties": {"label": str(ds.waypoint_labels.values[ip])},
+                    }
+                    for ip, it in enumerate(ds.waypoint_indices.values)
+                ],
+            ],
+        }
+    )
+
+
 def open_ftml(path):
     """Return an MSS flight track in FTML format as dataset."""
     tree = ET.parse(path)
