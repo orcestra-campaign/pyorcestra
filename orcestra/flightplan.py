@@ -309,7 +309,7 @@ def track_len(ds):
     return path_len(ds)
 
 
-def plot_path(path, ax, color=None, label=None, show_waypoints=True):
+def plot_path(path, ax, color=None, label=None, show_waypoints=False):
     import cartopy.crs as ccrs
 
     path = path_as_ds(path)
