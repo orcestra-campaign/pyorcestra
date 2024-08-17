@@ -31,12 +31,28 @@ def no_cartopy_download_warning():
     )
 
 
-def get_deg(decimal):
-    return int(decimal)
+def split_deg(deg, precision):
+    """
+    deg: decimal degree valur
+    precision: fraction of degree to round to
+        e.g. 12 == 1/12th of a degree -> 60/12 == 5 minutes
+    """
+    base_value = np.round(deg * precision)
+    return int(abs(base_value / precision)), abs(base_value * (60 / precision)) % 60
 
 
-def get_min(decimal):
-    return abs(decimal - int(decimal)) * 60
+def SN(deg):
+    """
+    return south (S) or north (N)
+    """
+    return "S" if deg < 0 else "N"
+
+
+def WE(deg):
+    """
+    return west (W) or east (E)
+    """
+    return "W" if deg < 0 else "E"
 
 
 @dataclass(frozen=True)
@@ -64,20 +80,25 @@ class LatLon:
     def assign_label(self, label: str) -> LatLon:
         return self.assign(label=label)
 
-    def to_fx_format(self, num_dec):
-        north_or_south = "N" if self.lat >= 0 else "S"
-        east_or_west = "E" if self.lon >= 0 else "W"
+    def format_5min(self):
+        dlat, mlat = split_deg(self.lat, 12)
+        dlon, mlon = split_deg(self.lon, 12)
+        return f"{dlat:02.0f}{mlat:02.0f}{SN(self.lat)}{dlon:03.0f}{mlon:02.0f}{WE(self.lon)}"
 
-        def get_rounded(mins):
-            return round(mins, num_dec) if num_dec > 0 else int(round(mins, num_dec))
+    def format_1min(self):
+        dlat, mlat = split_deg(self.lat, 60)
+        dlon, mlon = split_deg(self.lon, 60)
+        return f"{dlat:02.0f}{mlat:02.0f}{SN(self.lat)}{dlon:03.0f}{mlon:02.0f}{WE(self.lon)}"
 
-        lat_deg = f"{abs(get_deg(self.lat)):02d}"
-        lat_min = f"{get_rounded(get_min(self.lat)):02}"
+    def format_min100(self):
+        dlat, mlat = split_deg(self.lat, 6000)
+        dlon, mlon = split_deg(self.lon, 6000)
+        return f"{dlat:02.0f}{mlat:05.2f}{SN(self.lat)}{dlon:03.0f}{mlon:05.2f}{WE(self.lon)}"
 
-        lon_deg = f"{abs(get_deg(self.lon)):03d}"
-        lon_min = f"{get_rounded(get_min(self.lon)):02}"
-
-        return f"{lat_deg}{lat_min}{north_or_south}{lon_deg}{lon_min}{east_or_west}"
+    def format_pilot(self):
+        dlat, mlat = split_deg(self.lat, 6000)
+        dlon, mlon = split_deg(self.lon, 6000)
+        return f"{SN(self.lat)}{dlat:02.0f} {mlat:05.2f}, {WE(self.lon)}{dlon:03.0f} {mlon:05.2f}"
 
     assign = dataclasses.replace
 
