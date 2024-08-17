@@ -30,11 +30,14 @@ def no_cartopy_download_warning():
         module="cartopy",
     )
 
+
 def get_deg(decimal):
     return int(decimal)
 
+
 def get_min(decimal):
     return abs(decimal - int(decimal)) * 60
+
 
 @dataclass(frozen=True)
 class LatLon:
@@ -64,7 +67,7 @@ class LatLon:
     def to_fx_format(self, num_dec):
         north_or_south = "N" if self.lat >= 0 else "S"
         east_or_west = "E" if self.lon >= 0 else "W"
-        
+
         def get_rounded(mins):
             return round(mins, num_dec) if num_dec > 0 else int(round(mins, num_dec))
 
@@ -73,7 +76,7 @@ class LatLon:
 
         lon_deg = f"{abs(get_deg(self.lon)):03d}"
         lon_min = f"{get_rounded(get_min(self.lon)):02}"
-        
+
         return f"{lat_deg}{lat_min}{north_or_south}{lon_deg}{lon_min}{east_or_west}"
 
     assign = dataclasses.replace
@@ -542,6 +545,7 @@ def calc_zonal_mean(field, lon_min, lon_max, lat_min, lat_max):
     field_lat = field_bbox.groupby(field_bbox.lat).mean()
     return field_lat
 
+
 # Function that finds longitude of ec track that corresponds to the provided latitude
 def find_ec_lon(lat_sel, ec_lons, ec_lats):
     if not np.all(np.diff(ec_lats) > 0):
@@ -576,17 +580,15 @@ def find_edges(cwv, cwv_thresh, cwv_min=0, lat_cwv_max=9.0):
             cwv_lat_max = dist_peaks.lat[np.argmin(dist_peaks.values)]
 
             cwv_north = cwv.where(
-                (cwv.lat >= cwv_lat_max).compute() & (cwv > cwv_min).compute(), drop=True
+                (cwv.lat >= cwv_lat_max).compute() & (cwv > cwv_min).compute(),
+                drop=True,
             )
             cwv_south = cwv.where(
-                (cwv.lat <= cwv_lat_max).compute() & (cwv > cwv_min).compute(), drop=True
+                (cwv.lat <= cwv_lat_max).compute() & (cwv > cwv_min).compute(),
+                drop=True,
             )
 
-            lat_north = float(
-                cwv_north.lat.where(cwv_north <= cwv_thresh).min().values
-            )
-            lat_south = float(
-                cwv_south.lat.where(cwv_south >= cwv_thresh).min().values
-            )
+            lat_north = float(cwv_north.lat.where(cwv_north <= cwv_thresh).min().values)
+            lat_south = float(cwv_south.lat.where(cwv_south >= cwv_thresh).min().values)
 
     return lat_south, lat_north
