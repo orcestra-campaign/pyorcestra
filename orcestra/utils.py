@@ -24,6 +24,11 @@ def parse_datestr(datestr):
         datetime.datetime(2024, 8, 1, 9, 0, tzinfo=zoneinfo.ZoneInfo(key='Atlantic/Cape_Verde'))
 
     """
+    if isinstance(datestr, datetime.datetime):
+        return datestr
+    elif isinstance(datestr, datetime.date):
+        return datetime.datetime.combine(datestr, datetime.time())
+
     # Parse ISO 8601 string and time zone information
     regex = re.compile(r"^(.*?)(?:\[(.*)\])?$")
     iso, tz = regex.match(datestr).groups()
