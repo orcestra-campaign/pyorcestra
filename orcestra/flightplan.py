@@ -492,6 +492,31 @@ def path_quickplot(path, sel_time, crossection=True):
     return fig
 
 
+def to_kml(path):
+    import simplekml
+
+    ds = path_as_ds(path)
+
+    # fl2m = 100 * .3048  # currently not used: can lead to parallax error
+    kml = simplekml.Kml()
+    kml.newlinestring(
+        name="Flight Track",
+        description="Flight Track",
+        coords=list(zip(ds.lon.values, ds.lat.values, np.zeros_like(ds.fl.values))),
+    )
+    seen_points = set()
+    for ip, it in enumerate(ds.waypoint_indices.values):
+        p = name, lon, lat = (
+            ds.waypoint_labels.values[ip],
+            ds.lon.values[it],
+            ds.lat.values[it],
+        )
+        if p not in seen_points:
+            kml.newpoint(name=name, coords=[(lon, lat)])
+            seen_points.add(p)
+    return kml.kml()
+
+
 def open_ftml(path):
     """Return an MSS flight track in FTML format as dataset."""
     tree = ET.parse(path)
