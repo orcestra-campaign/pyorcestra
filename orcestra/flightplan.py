@@ -408,6 +408,7 @@ def plot_path(path, ax, color=None, label=None, show_waypoints=True):
             path_effects=[pe.withStroke(linewidth=4, foreground="white")],
         )
 
+
 def plot_usurf(var, ax=None, levels=None):
     import matplotlib.pylab as plt
     import easygems.healpix as egh
@@ -432,6 +433,7 @@ def plot_usurf(var, ax=None, levels=None):
         ax=ax,
     )
     plt.clabel(contour_lines, inline=True, fontsize=8, colors="red", fmt="%d")
+
 
 def plot_cwv(var, ax=None, levels=None):
     import matplotlib.pylab as plt
