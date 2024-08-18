@@ -65,9 +65,9 @@ def _roll_filter(ds, roll):
         Dataset filtered by plane roll angle.
     """
 
-    roll_subsampled = roll.sel(
-        time=ds.time, method="nearest"
-    ).assign_coords(time=ds.time)
+    roll_subsampled = roll.sel(time=ds.time, method="nearest").assign_coords(
+        time=ds.time
+    )
 
     return ds.where(np.abs(roll_subsampled) < config["roll_threshold"])
 
@@ -88,11 +88,12 @@ def _altitude_filter(ds, height):
         Dataset filtered by plane altitude.
     """
 
-    height_subsampled = height.sel(
-        time=ds.time, method="nearest"
-    ).assign_coords(time=ds.time)
+    height_subsampled = height.sel(time=ds.time, method="nearest").assign_coords(
+        time=ds.time
+    )
 
     return ds.where(height_subsampled > config["altitude_threshold"])
+
 
 def _trim_dataset(ds, dim="time"):
     """
@@ -221,9 +222,7 @@ def filter_radiometer(ds, height, roll):
     """
 
     return (
-        ds.pipe(_altitude_filter, height)
-        .pipe(_roll_filter, roll)
-        .pipe(_trim_dataset)
+        ds.pipe(_altitude_filter, height).pipe(_roll_filter, roll).pipe(_trim_dataset)
     )
 
 
@@ -248,15 +247,15 @@ def correct_radar_height(ds, roll, pitch, altitude):
 
     """
     z_grid = np.arange(0, altitude.max() + 30, 30)
-    altitude_subsampled = altitude.sel(
-        time=ds.time, method="nearest"
-    ).assign_coords(time=ds.time)
-    roll_subsampled = roll.sel(
-        time=ds.time, method="nearest"
-    ).assign_coords(time=ds.time)
-    pitch_subsampled = pitch.sel(
-        time=ds.time, method="nearest"
-    ).assign_coords(time=ds.time)
+    altitude_subsampled = altitude.sel(time=ds.time, method="nearest").assign_coords(
+        time=ds.time
+    )
+    roll_subsampled = roll.sel(time=ds.time, method="nearest").assign_coords(
+        time=ds.time
+    )
+    pitch_subsampled = pitch.sel(time=ds.time, method="nearest").assign_coords(
+        time=ds.time
+    )
     flight_los = (
         altitude_subsampled
         / np.cos(np.radians(pitch_subsampled))
@@ -276,4 +275,6 @@ def correct_radar_height(ds, roll, pitch, altitude):
         / np.cos(np.radians(roll_subsampled)),
     )
 
-    return ds.sel(range=flight_los - ds_range, method="nearest").where(ds_z_grid < altitude_subsampled)
+    return ds.sel(range=flight_los - ds_range, method="nearest").where(
+        ds_z_grid < altitude_subsampled
+    )
