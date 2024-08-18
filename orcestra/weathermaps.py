@@ -1,4 +1,4 @@
-from goes2go.data import goes_nearesttime, goes_latest
+from goes2go.data import goes_nearesttime
 import cartopy.crs as ccrs
 import matplotlib.pyplot as plt
 import xarray as xr
