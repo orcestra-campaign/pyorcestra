@@ -68,6 +68,8 @@ def _create_GOES_variable(
     }
     return GOES_PRODUCT_DICT[variable]
 
-def goes_image(image_date ,satellite='16', product='ABI', domain='F', variable='TrueColor'):
+def goes_image(image_date ,ax , satellite='16', product='ABI', domain='F', variable='TrueColor'):
     snapshot = goes_nearesttime(image_date, satellite=satellite, product=product, domain = domain)
-    return _create_GOES_variable(snapshot, variable)
+    ax.imshow(_create_GOES_variable(snapshot, variable), transform=snapshot.rgb.crs, regrid_shape=3500,
+              interpolation='nearest')     
+    return 
