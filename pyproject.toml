@@ -31,6 +31,7 @@ cartopy = "*"
 pyproj = "*"
 textalloc = "*"
 simplekml = "*"
+pandas = "*" 
 
 [tool.poetry.group.test.dependencies]
 pytest = "*"
