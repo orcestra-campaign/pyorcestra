@@ -3,6 +3,7 @@ import cartopy.crs as ccrs
 import matplotlib.pyplot as plt
 import xarray as xr
 
+
 def plot_sat(
     date_time_obj,
     layer="MODIS_Terra_CorrectedReflectance_TrueColor,Coastlines_15m",
@@ -36,11 +37,11 @@ def plot_sat(
         transform=ccrs.PlateCarree(),
     )
 
+
 # used to create a goes image that can be plotted with imshow
 
-def _create_GOES_variable(
-        goes_object: xr.Dataset, variable: str, gamma:float = 1.2
-        ):
+
+def _create_GOES_variable(goes_object: xr.Dataset, variable: str, gamma: float = 1.2):
     GOES_PRODUCT_DICT = {
         "AirMass": goes_object.rgb.AirMass,
         "AirMassTropical": goes_object.rgb.AirMassTropical,
@@ -68,8 +69,17 @@ def _create_GOES_variable(
     }
     return GOES_PRODUCT_DICT[variable]
 
-def goes_overlay(image_date ,ax , satellite='16', product='ABI', domain='F', variable='TrueColor'):
-    snapshot = goes_nearesttime(image_date, satellite=satellite, product=product, domain = domain)
-    ax.imshow(_create_GOES_variable(snapshot, variable), transform=snapshot.rgb.crs, regrid_shape=3500,
-              interpolation='nearest')     
-    return 
+
+def goes_overlay(
+    image_date, ax, satellite="16", product="ABI", domain="F", variable="TrueColor"
+):
+    snapshot = goes_nearesttime(
+        image_date, satellite=satellite, product=product, domain=domain
+    )
+    ax.imshow(
+        _create_GOES_variable(snapshot, variable),
+        transform=snapshot.rgb.crs,
+        regrid_shape=3500,
+        interpolation="nearest",
+    )
+    return
