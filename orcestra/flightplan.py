@@ -309,7 +309,7 @@ def track_len(ds):
     return path_len(ds)
 
 
-def plot_path(path, ax, color=None, label=None, show_waypoints=False):
+def plot_path(path, ax, color="C1", label=None, show_waypoints=True):
     import cartopy.crs as ccrs
 
     path = path_as_ds(path)
@@ -394,7 +394,9 @@ def vertical_preview(path):
     ax.plot(path.distance, path.fl, color="C1", lw=2)
 
 
-def path_preview(path, coastlines=True, gridlines=True, ax=None, size=8, aspect=16 / 9):
+def path_preview(
+    path, coastlines=True, gridlines=True, ax=None, size=8, aspect=16 / 9, **kwargs
+):
     import matplotlib.pylab as plt
     import cartopy.crs as ccrs
 
@@ -437,7 +439,7 @@ def path_preview(path, coastlines=True, gridlines=True, ax=None, size=8, aspect=
         no_cartopy_download_warning()
         ax.gridlines(draw_labels=True, alpha=0.25)
 
-    plot_path(path, ax=ax, label="path", color="C1")
+    plot_path(path, ax=ax, label="path", **kwargs)
     return ax
 
 
