@@ -1,4 +1,3 @@
-from goes2go.data import goes_nearesttime
 import cartopy.crs as ccrs
 import matplotlib.pyplot as plt
 import xarray as xr
@@ -38,10 +37,8 @@ def plot_sat(
     )
 
 
-# used to create a goes image that can be plotted with imshow
-
-
 def _create_GOES_variable(goes_object: xr.Dataset, variable: str, gamma: float = 1.2):
+    """Create a GOES image that can be plotted with `plt.imshow()`."""
     GOES_PRODUCT_DICT = {
         "AirMass": goes_object.rgb.AirMass,
         "AirMassTropical": goes_object.rgb.AirMassTropical,
@@ -73,6 +70,8 @@ def _create_GOES_variable(goes_object: xr.Dataset, variable: str, gamma: float =
 def goes_overlay(
     image_date, ax, satellite="16", product="ABI", domain="F", variable="TrueColor"
 ):
+    from goes2go.data import goes_nearesttime
+
     snapshot = goes_nearesttime(
         image_date, satellite=satellite, product=product, domain=domain
     )
