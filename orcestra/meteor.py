@@ -78,6 +78,6 @@ def get_meteor_track():
 
     # Remove duplicate lat/lon information
     pos = [(lon, lat) for lon, lat in zip(ds.lon.values, ds.lat.values)]
-    idx = np.sum(np.diff(pos, axis=0, append=np.nan), axis=1).astype(bool)
+    idx = np.sum(np.diff(pos, axis=0, prepend=1000), axis=1).astype(bool)
 
     return ds.isel(time=idx).sortby("time")
