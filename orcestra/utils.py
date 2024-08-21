@@ -4,6 +4,7 @@ import re
 import zoneinfo
 from functools import lru_cache
 
+import matplotlib.pyplot as plt
 import yaml
 
 
@@ -54,3 +55,29 @@ def load_frontmatter(path):
             frontmatter[key] = parse_datestr(frontmatter[key])
 
     return frontmatter
+
+
+def export_planet(fname, fig=None, dpi=144, stem_ext="_planet", **kwargs):
+    """Save a Matplotlib figure in high and low resolution for PLANET upload.
+
+    This function is intended as a drop-in replacement for Matplotlib's `savefig()`.
+    It will save the image based on the format extension and settings passed by the user.
+    It will also save a low-res JPEG with an extension to the filename stem (default "_planet").
+    """
+    if fig is None:
+        fig = plt.gcf()
+
+    # Store "as is" for people on ground
+    fig.savefig(fname, dpi=dpi, **kwargs)
+
+    # Low-res version for PLANET upload
+    fpath = pathlib.Path(fname)
+    fig.savefig(
+        fname=fpath.with_stem(fpath.stem + stem_ext).with_suffix(".jpeg"),
+        dpi=72,
+        pil_kwargs={
+            "optimize": True,
+            "progressive": True,
+        },
+        **kwargs,
+    )
