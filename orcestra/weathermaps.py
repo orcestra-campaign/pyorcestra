@@ -82,3 +82,30 @@ def goes_overlay(
         interpolation="nearest",
     )
     return
+
+
+def dropsondes_overlay(
+        dropsonde_ds, ax, variable="iwv", variable_label=r'Integrated Water Vapor / kg m$^{-2}$',
+        colormap="Blues_r",
+        ):
+    
+    from mpl_toolkits.axes_grid1 import make_axes_locatable
+    
+    im_launches = ax.scatter(
+        dropsonde_ds["lon"].isel(alt=10),
+        dropsonde_ds["lat"].isel(alt=10),
+        marker="o",
+        edgecolor="grey",
+        s=60,
+        transform=ccrs.PlateCarree(),
+        c=dropsonde_ds[variable],
+        cmap=colormap,
+    )
+
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("bottom", size="3%", pad=0.4, axes_class=plt.Axes)
+    cbar = plt.colorbar(im_launches, cax=cax, orientation="horizontal")
+    cbar.set_label(variable_label)
+    
+    return
+    
