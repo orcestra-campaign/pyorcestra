@@ -169,15 +169,26 @@ def resample_radiometer(ds, freq=pd.Timedelta("1s")):
         for f in ds.frequency
     ]
     ds_resampled = xr.concat(TBs, dim="frequency")
-    freq_less_vars = [
-        "ultra_sampling_factor",
-        "rain_flag",
-        "elevation_angle",
-        "azimuth_angle",
+    # Find variables with only the dimension 'time'
+    time_only_vars = [
+        var_name for var_name, var in ds.data_vars.items() if set(var.dims) == {"time"}
     ]
+
+    # Resample these variables
     ds_resampled = ds_resampled.assign(
-        ds[freq_less_vars].to_dataframe().resample(freq).mean().to_xarray()
+        ds[time_only_vars].to_dataframe().resample(freq).mean().to_xarray()
     )
+
+    # Set variables without time dimensions
+    for var_name, var in ds.data_vars.items():
+        if set(var.dims) != {"time"}:
+            ds_resampled[var_name] = var
+
+    # set attributes of resampled dataset
+    ds_resampled.attrs = ds.attrs
+    for var in ds_resampled.data_vars:
+        ds_resampled[var].attrs = ds[var].attrs
+
     return ds_resampled
 
 
