@@ -66,7 +66,7 @@ class LatLon:
     time: Optional[datetime.datetime | str] = None
 
     def __post_init__(self):
-        if isinstance(self.time, str):
+        if isinstance(self.time, (str, np.datetime64, xr.DataArray)):
             super().__setattr__("time", parse_datestr(self.time))
         if self.time is not None and (
             self.time.tzinfo is None or self.time.tzinfo.utcoffset(self.time) is None
@@ -211,6 +211,7 @@ def expand_path(path: list[LatLon], dx=None, max_points=None):
         fls = np.concatenate(fls)
         dists = np.concatenate(dists)
 
+        simple_path_indices = np.array(indices)
         il = list(
             zip(*[(i, label) for i, label in zip(indices, labels) if label is not None])
         )
@@ -256,7 +257,7 @@ def expand_path(path: list[LatLon], dx=None, max_points=None):
             )
 
         if "duration" in ds:
-            offset = ds.duration.values[ds.waypoint_indices[i]]
+            offset = ds.duration.values[simple_path_indices[i]]
             ds = ds.assign(time=ds.duration - offset + reftime)
 
     return ds
@@ -706,6 +707,12 @@ def find_ec_lon(lat_sel, ec_lons, ec_lats):
         ec_lats = ec_lats[::-1]
     assert np.all(np.diff(ec_lats) > 0), "ec_lats are not monotonic"
     return np.interp(lat_sel, ec_lats, ec_lons)
+
+
+def ec_time_at_lat(ec_track, lat):
+    e = np.datetime64("2024-08-01")
+    s = np.timedelta64(1, "ns")
+    return ((ec_track.swap_dims({"time": "lat"}).time - e) / s).interp(lat=lat) * s + e
 
 
 def find_edges(cwv, cwv_thresh, cwv_min=0, lat_cwv_max=9.0):

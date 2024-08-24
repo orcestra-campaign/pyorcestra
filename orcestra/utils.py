@@ -4,6 +4,9 @@ import re
 import zoneinfo
 from functools import lru_cache
 
+import numpy as np
+import pandas as pd
+import xarray as xr
 import matplotlib.pyplot as plt
 import yaml
 
@@ -24,11 +27,27 @@ def parse_datestr(datestr):
         >>> parse_datestr("2024-08-01 09:00:00[Atlantic/Cape_Verde]")
         datetime.datetime(2024, 8, 1, 9, 0, tzinfo=zoneinfo.ZoneInfo(key='Atlantic/Cape_Verde'))
 
+        In case of numpy datetime64, we assume it's in UTC (that's what most np.datetime64 are)
+        >>> parse_datestr(np.datetime64("2024-08-01 09:00:00"))
+        datetime.datetime(2024, 8, 1, 9, 0, tzinfo=datetime.timezone.utc)
+
     """
     if isinstance(datestr, datetime.datetime):
         return datestr
     elif isinstance(datestr, datetime.date):
         return datetime.datetime.combine(datestr, datetime.time())
+    elif isinstance(datestr, xr.DataArray):
+        return (
+            pd.Timestamp(datestr.values)
+            .to_pydatetime(warn=False)
+            .replace(tzinfo=datetime.timezone.utc)
+        )
+    elif isinstance(datestr, np.datetime64):
+        return (
+            pd.Timestamp(datestr)
+            .to_pydatetime(warn=False)
+            .replace(tzinfo=datetime.timezone.utc)
+        )
 
     # Parse ISO 8601 string and time zone information
     regex = re.compile(r"^(.*?)(?:\[(.*)\])?$")
