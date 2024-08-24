@@ -2,7 +2,6 @@ import numpy as np
 import xarray as xr
 import json
 import os
-import pandas as pd
 
 # Get the directory of the current script
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -139,57 +138,6 @@ def coarsen_radiometer(ds):
     """
 
     return ds.coarsen(time=4, boundary="pad").mean().drop_duplicates("time")
-
-
-def resample_radiometer(ds, freq=pd.Timedelta("1s")):
-    """
-    Resample radiometer data to a given frequency using pandas dataframe resample method to speed up the process.
-
-    Parameters
-    ----------
-    ds : xarray.Dataset
-        level 0 radiometer data
-    freq : pandas.Timedelta
-        resampling frequency, default is 1 second
-
-    Returns
-    -------
-    xarray.Dataset
-        resampled radiometer data
-    """
-
-    TBs = [
-        ds.TBs.sel(frequency=f)
-        .to_dataframe()
-        .resample(freq)
-        .mean()
-        .to_xarray()
-        .drop_vars("frequency")
-        .expand_dims(dim={"frequency": pd.Index([f], name="frequency")})
-        for f in ds.frequency
-    ]
-    ds_resampled = xr.concat(TBs, dim="frequency")
-    # Find variables with only the dimension 'time'
-    time_only_vars = [
-        var_name for var_name, var in ds.data_vars.items() if set(var.dims) == {"time"}
-    ]
-
-    # Resample these variables
-    ds_resampled = ds_resampled.assign(
-        ds[time_only_vars].to_dataframe().resample(freq).mean().to_xarray()
-    )
-
-    # Set variables without time dimensions
-    for var_name, var in ds.data_vars.items():
-        if set(var.dims) != {"time"}:
-            ds_resampled[var_name] = var
-
-    # set attributes of resampled dataset
-    ds_resampled.attrs = ds.attrs
-    for var in ds_resampled.data_vars:
-        ds_resampled[var].attrs = ds[var].attrs
-
-    return ds_resampled
 
 
 def filter_radar(ds, roll):
