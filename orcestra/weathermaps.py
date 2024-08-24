@@ -90,15 +90,18 @@ def dropsondes_overlay(
     variable="iwv",
     variable_label=r"Integrated Water Vapor / kg m$^{-2}$",
     colormap="Blues_r",
+    markershape="o",
+    markersize=40,
+    edgecolor="grey",
 ):
     from mpl_toolkits.axes_grid1 import make_axes_locatable
 
     im_launches = ax.scatter(
         dropsonde_ds["lon"].isel(alt=10),
         dropsonde_ds["lat"].isel(alt=10),
-        marker="o",
-        edgecolor="grey",
-        s=60,
+        marker=markershape,
+        edgecolor=edgecolor,
+        s=markersize,
         transform=ccrs.PlateCarree(),
         c=dropsonde_ds[variable],
         cmap=colormap,
