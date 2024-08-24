@@ -708,6 +708,12 @@ def find_ec_lon(lat_sel, ec_lons, ec_lats):
     return np.interp(lat_sel, ec_lats, ec_lons)
 
 
+def ec_time_at_lat(ec_track, lat):
+    e = np.datetime64("2024-08-01")
+    s = np.timedelta64(1, "ns")
+    return ((ec_track.swap_dims({"time": "lat"}).time - e) / s).interp(lat=lat) * s + e
+
+
 def find_edges(cwv, cwv_thresh, cwv_min=0, lat_cwv_max=9.0):
     """
     Determine latitude of peak in CWV that is closest to the latitude of peak CWV in the average CWV profile (lat_cwv_max).
