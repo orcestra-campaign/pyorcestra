@@ -112,4 +112,4 @@ def dropsondes_overlay(
     cbar = plt.colorbar(im_launches, cax=cax, orientation="horizontal")
     cbar.set_label(variable_label)
 
-    return
+    return im_launches
