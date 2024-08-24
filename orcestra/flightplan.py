@@ -211,6 +211,7 @@ def expand_path(path: list[LatLon], dx=None, max_points=None):
         fls = np.concatenate(fls)
         dists = np.concatenate(dists)
 
+        simple_path_indices = np.array(indices)
         il = list(
             zip(*[(i, label) for i, label in zip(indices, labels) if label is not None])
         )
@@ -256,7 +257,7 @@ def expand_path(path: list[LatLon], dx=None, max_points=None):
             )
 
         if "duration" in ds:
-            offset = ds.duration.values[ds.waypoint_indices[i]]
+            offset = ds.duration.values[simple_path_indices[i]]
             ds = ds.assign(time=ds.duration - offset + reftime)
 
     return ds

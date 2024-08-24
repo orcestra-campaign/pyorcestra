@@ -1,5 +1,6 @@
 import pytest
 import pyproj
+import numpy as np
 import numpy.testing as npt
 import orcestra.flightplan as fp
 
@@ -54,3 +55,12 @@ def test_assign_flightlevel():
     assert a.lat == b.lat == 3
     assert a.lon == b.lon == 7
     assert a.label == b.label == "test"
+
+
+def test_fix_waypoint_time():
+    a = fp.LatLon(0, 0, fl=300)
+    b = fp.LatLon(0, 1, fl=300, time="2014-01-01T00:00:00")
+    path = fp.expand_path([a, b], max_points=2)
+    print(path)
+    assert path.time.values[-1] == np.datetime64("2014-01-01T00:00:00")
+    assert path.time.values[0] < path.time.values[-1]
