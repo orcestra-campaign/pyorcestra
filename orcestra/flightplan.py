@@ -66,7 +66,7 @@ class LatLon:
     time: Optional[datetime.datetime | str] = None
 
     def __post_init__(self):
-        if isinstance(self.time, str):
+        if isinstance(self.time, (str, np.datetime64, xr.DataArray)):
             super().__setattr__("time", parse_datestr(self.time))
         if self.time is not None and (
             self.time.tzinfo is None or self.time.tzinfo.utcoffset(self.time) is None
