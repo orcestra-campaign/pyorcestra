@@ -21,6 +21,18 @@ from .utils import parse_datestr
 geod = pyproj.Geod(ellps="WGS84")
 
 
+def overpass_time(
+    x_track, y_track, x_lon="lon", x_lat="lat", y_lon="IRS_LON", y_lat="IRS_LAT"
+):
+    """
+    Returns distance and time at closet overpass. Default assumes second platform is HALO
+    tracks from BAHAMAS (with well formed time dimension) and has higher rate temporal data.
+    """
+    x = x_track.interp(time=y_track.time)
+    az12, az21, dist = geod.inv(x[x_lon], x[x_lat], y_track[y_lon], y_track[y_lat])
+    return dist, y_track.time[dist.argmin()]
+
+
 def no_cartopy_download_warning():
     import warnings
     from cartopy.io import DownloadWarning
