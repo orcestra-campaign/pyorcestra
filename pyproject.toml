@@ -13,26 +13,25 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = ">=3.10"
-numpy = "*"
-xarray = "*"
-flox = "*"  # part of xarray[accel]
-astropy = "*"
-sgp4 = "*"
-scipy = "*"
-
-intake = "<2.0.0"
-requests = "*"
 aiohttp = "*"
-intake-xarray = "*"
-zarr = "*"
-healpy = "*"
-easygems = ">=0.0.8"
-matplotlib = "*"
+astropy = "*"
 cartopy = "*"
-pyproj = "*"
-textalloc = "*"
-simplekml = "*"
+easygems = ">=0.0.8"
+flox = "*"  # part of xarray[accel]
+healpy = "*"
+intake = "<2.0.0"
+intake-xarray = "*"
+matplotlib = "*"
+numpy = "*"
 pandas = "*" 
+pyproj = "*"
+requests = "*"
+scipy = "*"
+sgp4 = "*"
+simplekml = "*"
+textalloc = "*"
+xarray = "*"
+zarr = "*"
 
 [tool.poetry.group.test.dependencies]
 pytest = "*"
