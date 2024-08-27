@@ -646,6 +646,40 @@ def to_geojson(path):
     )
 
 
+def as_href(data, mime):
+    import base64
+
+    return f"data:{mime};base64,{base64.b64encode(data).decode('ascii')}"
+
+
+def export_flightplan(flight_id, plan):
+    from ipywidgets import HTML
+    from IPython.display import display
+
+    kml = to_kml(plan)
+    geojson = to_geojson(plan)
+
+    # BUTTONS
+    html = f"""<html>
+    <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    </head>
+    <body>
+    <h2>
+    Download Flightplan as:
+    </h2>
+    <a download="{flight_id}.geojson" href="{as_href(geojson.encode('utf-8'), 'application/geo+json')}" download>
+    <button class="p-Widget jupyter-widgets jupyter-button widget-button mod-warning">GeoJSON</button>
+    </a>
+    <a download="{flight_id}.kml" href="{as_href(kml.encode('utf-8'), 'application/vnd.google-earth.kml+xml')}" download>
+    <button class="p-Widget jupyter-widgets jupyter-button widget-button mod-warning">KML</button>
+    </a>
+    </body>
+    </html>
+    """
+    return display(HTML(html))
+
+
 def open_ftml(path):
     """Return an MSS flight track in FTML format as dataset."""
     tree = ET.parse(path)
