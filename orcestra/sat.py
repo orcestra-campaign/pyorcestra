@@ -119,7 +119,7 @@ class CalipsoTrackLoader:
 class SattrackLoader:
     server = "https://sattracks.orcestra-campaign.org/"
 
-    def __init__(self, satelite_name, forecast_day, kind="LTP"):
+    def __init__(self, satelite_name, forecast_day, kind="LTP", roi="CAPE_VERDE"):
         """
         Loader for satallite tracks from sattracks.orcestra-campaign.org.
 
@@ -138,15 +138,17 @@ class SattrackLoader:
         self.satelite_name = satelite_name
         self.forecast_day = pd.Timestamp(np.datetime64(forecast_day))
         self.kind = kind
+        self.roi = roi
 
     @lru_cache
     def _get_index(self):
         return (
             pd.read_csv(
-                self.server + "index.csv", parse_dates=["forecast_day", "valid_day"]
+                self.server + "index_v2.csv", parse_dates=["forecast_day", "valid_day"]
             )
-            .set_index(["sat", "valid_day", "forecast_day", "kind"])
+            .set_index(["roi", "sat", "valid_day", "forecast_day", "kind"])
             .sort_index()
+            .loc[self.roi]
         )
 
     @lru_cache
