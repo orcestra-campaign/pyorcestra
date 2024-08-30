@@ -175,6 +175,9 @@ class FlightPlan:
     def landing_time(self):
         return self.computed_time_at_raw_index(-1, end=True)
 
+    def show_details(self):
+        print(to_detailed_txt(self))
+
 
 def attach_flight_performance(ds, performance):
     second = np.timedelta64(1000000000, "ns")
