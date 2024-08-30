@@ -76,6 +76,7 @@ class LatLon:
     label: Optional[str] = None
     fl: Optional[float] = None
     time: Optional[datetime.datetime | str] = None
+    note: Optional[str] = None
 
     def __post_init__(self):
         if isinstance(self.time, (str, np.datetime64, xr.DataArray)):
