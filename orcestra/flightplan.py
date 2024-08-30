@@ -795,15 +795,6 @@ def to_txt(plan: FlightPlan):
                 f"circle around {point.center.label:12s} {point.center.format_pilot():20s}, FL{point.center.fl:03d}, {tstart:%H:%M:%S %Z} - {tend:%H:%M:%S %Z}, radius: {radius_nm:.0f} nm, {abs(point.angle):.0f}° {direction}, enter from {az_to_text(az21)}, {point.center.note or ''}\n"
             )
 
-    file.write("\n -- circle centers:")
-    for point in plan.path:
-        if isinstance(point, IntoCircle):
-            point = point.center
-            file.write(f"\n{point.label:12s} {point.format_pilot()}")
-    file.write("\n\n -- extra waypoints:")
-    for point in plan.extra_waypoints:
-        file.write(f"\n{point.label:12s} {point.format_pilot()}, {point.note or ''}")
-
     file.write("\n\nCrew:")
     for position, person in plan.crew.items():
         file.write(f"\n{position:22s} {person}")
