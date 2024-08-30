@@ -458,12 +458,12 @@ def track_len(ds):
     return path_len(ds)
 
 
-def plot_path(path, ax, color="C1", label=None, show_waypoints=True):
+def plot_path(plan, ax, color="C1", label=None, show_waypoints=True, extra_color="C3"):
     import cartopy.crs as ccrs
 
-    path = path_as_ds(path)
+    ds = path_as_ds(plan)
 
-    ax.plot(path.lon, path.lat, transform=ccrs.Geodetic(), label=label, color=color)
+    ax.plot(ds.lon, ds.lat, transform=ccrs.Geodetic(), label=label, color=color)
 
     if show_waypoints:
         import matplotlib.patheffects as pe
@@ -471,29 +471,62 @@ def plot_path(path, ax, color="C1", label=None, show_waypoints=True):
         import textalloc as ta
         from matplotlib.colors import to_rgba, to_hex
 
-        # deduplicate labels
-        lon, lat, text = zip(
-            *set(
-                zip(
-                    path.lon[path.waypoint_indices].values,
-                    path.lat[path.waypoint_indices].values,
-                    path.waypoint_labels.values,
-                )
+        labels = set(
+            zip(
+                ds.lon[ds.waypoint_indices].values,
+                ds.lat[ds.waypoint_indices].values,
+                ds.waypoint_labels.values,
             )
         )
 
+        if isinstance(plan, FlightPlan):
+            centers = set(
+                [
+                    (p.center.lon, p.center.lat, p.center.label)
+                    for p in plan.path
+                    if isinstance(p, IntoCircle)
+                ]
+            )
+            labels |= centers
+
+            extra_points = set([(p.lon, p.lat, p.label) for p in plan.extra_waypoints])
+        else:
+            extra_points = set()
+
+        if extra_points:
+            elon, elat, _ = zip(*extra_points)
+            ax.scatter(
+                elon,
+                elat,
+                transform=ccrs.Geodetic(),
+                color=extra_color,
+                marker="+",
+                s=10,
+            )
+
+        # deduplicate labels
+        lon, lat, text = zip(*labels, *extra_points)
+
         label_color = to_rgba(color)
         line_color = label_color[:3] + (label_color[3] * 0.5,)
+        extra_label_color = to_rgba(extra_color)
+        extra_line_color = extra_label_color[:3] + (extra_label_color[3] * 0.5,)
 
         ta.allocate(
             ax,
             lon,
             lat,
             text,
-            x_lines=[path.lon],
-            y_lines=[path.lat],
-            linecolor=to_hex(line_color, True),
-            textcolor=to_hex(label_color, True),
+            x_lines=[ds.lon],
+            y_lines=[ds.lat],
+            linecolor=[
+                *([to_hex(line_color, True)] * len(labels)),
+                *([to_hex(extra_line_color, True)] * len(extra_points)),
+            ],
+            textcolor=[
+                *([to_hex(label_color, True)] * len(labels)),
+                *([to_hex(extra_label_color, True)] * len(extra_points)),
+            ],
             path_effects=[pe.withStroke(linewidth=4, foreground="white")],
         )
 
