@@ -866,12 +866,27 @@ def export_flightplan(flight_id_or_plan, plan=None):
     from ipywidgets import HTML
     from IPython.display import display
 
-    kml = to_kml(plan)
-    geojson = to_geojson(plan)
-    txt = to_txt(plan)
+    exports = [
+        (
+            ".geojson",
+            "GeoJSON",
+            "application/geo+json",
+            to_geojson(plan).encode("utf-8"),
+        ),
+        (
+            ".kml",
+            "KML",
+            "application/vnd.google-earth.kml+xml",
+            to_kml(plan).encode("utf-8"),
+        ),
+    ]
+    if isinstance(plan, FlightPlan):
+        exports.append(
+            ("_waypoints.txt", "TXT", "text/plain", to_txt(plan).encode("utf-8"))
+        )
 
     # BUTTONS
-    html = f"""<html>
+    html = """<html>
     <head>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     </head>
@@ -879,15 +894,14 @@ def export_flightplan(flight_id_or_plan, plan=None):
     <h2>
     Download Flightplan as:
     </h2>
-    <a download="{flight_id}.geojson" href="{as_href(geojson.encode('utf-8'), 'application/geo+json')}" download>
-    <button class="p-Widget jupyter-widgets jupyter-button widget-button mod-warning">GeoJSON</button>
-    </a>
-    <a download="{flight_id}.kml" href="{as_href(kml.encode('utf-8'), 'application/vnd.google-earth.kml+xml')}" download>
-    <button class="p-Widget jupyter-widgets jupyter-button widget-button mod-warning">KML</button>
-    </a>
-    <a download="{flight_id}_waypoints.txt" href="{as_href(txt.encode('utf-8'), 'text/plain')}" download>
-    <button class="p-Widget jupyter-widgets jupyter-button widget-button mod-warning">TXT</button>
-    </a>
+    """
+    for suffix, name, mime, data in exports:
+        html += f"""
+            <a download="{flight_id}{suffix}" href="{as_href(data, mime)}" download>
+            <button class="p-Widget jupyter-widgets jupyter-button widget-button mod-warning">{name}</button>
+            </a>
+            """
+    html += """
     </body>
     </html>
     """
