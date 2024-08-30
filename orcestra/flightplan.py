@@ -167,6 +167,14 @@ class FlightPlan:
             .replace(tzinfo=datetime.timezone.utc)
         )
 
+    @cached_property
+    def takeoff_time(self):
+        return self.computed_time_at_raw_index(0)
+
+    @cached_property
+    def landing_time(self):
+        return self.computed_time_at_raw_index(-1, end=True)
+
 
 def attach_flight_performance(ds, performance):
     second = np.timedelta64(1000000000, "ns")
