@@ -151,7 +151,7 @@ def expand_path(path: list[LatLon], dx=None, max_points=None):
     NOTE: this function follows great circles
     """
 
-    path = simplify_path(path)
+    path, backmap = simplify_path(path, return_backmap=True)
     lon_points = np.asarray([p.lon for p in path])
     lat_points = np.asarray([p.lat for p in path])
     fl_points = np.asarray([p.fl if p.fl is not None else np.nan for p in path])
@@ -240,6 +240,18 @@ def expand_path(path: list[LatLon], dx=None, max_points=None):
         {
             "waypoint_indices": ("waypoint", indices),
             "waypoint_labels": ("waypoint", labels),
+            "raw_points_start": (
+                "raw_points",
+                simple_path_indices[
+                    [i.start if isinstance(i, slice) else i for i in backmap]
+                ],
+            ),
+            "raw_points_end": (
+                "raw_points",
+                simple_path_indices[
+                    [i.stop - 1 if isinstance(i, slice) else i for i in backmap]
+                ],
+            ),
         },
         coords={
             "distance": ("distance", dists),
@@ -349,18 +361,30 @@ class IntoCircle:
         return points
 
 
-def simplify_path(path):
+def simplify_path(path, return_backmap=False):
+    backmap = []
+
     def _gen():
         last = None
+        i = 0
         for p in path:
             if callable(p):
+                first = i
                 for last in p(last):
                     yield last
+                    i += 1
+                backmap.append(slice(first, i))
             else:
                 last = p
                 yield last
+                backmap.append(i)
+                i += 1
 
-    return list(_gen())
+    out_path = list(_gen())
+    if return_backmap:
+        return out_path, backmap
+    else:
+        return out_path
 
 
 def path_as_ds(path):
