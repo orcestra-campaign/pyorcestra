@@ -741,6 +741,40 @@ def az_to_text(az):
     return sections[int(((az + (360 / 2 / len(sections))) * len(sections) / 360) % 8)]
 
 
+def to_detailed_txt(plan: FlightPlan):
+    from io import StringIO
+
+    file = StringIO()
+
+    file.write("Detailed Overview:\n")
+    for i, point in enumerate(plan.path):
+        if isinstance(point, LatLon):
+            if i == 0:
+                prefix = ""
+            else:
+                prefix = "to"
+            file.write(
+                f"{prefix:13s} {point.label:12s} {point.format_pilot():20s}, FL{point.fl:03d}, {plan.computed_time_at_raw_index(i):%H:%M:%S %Z}, {point.note or ''}\n"
+            )
+        elif isinstance(point, IntoCircle):
+            tstart = plan.computed_time_at_raw_index(i)
+            tend = plan.computed_time_at_raw_index(i, end=True)
+            radius_nm = point.radius / 1852
+            direction = "CW" if point.angle > 0 else "CCW"
+            start_index = int(plan.ds.raw_points_start[i])
+            (az12, az21, dist) = geod.inv(
+                plan.ds.lon[start_index].values,
+                plan.ds.lat[start_index].values,
+                point.center.lon,
+                point.center.lat,
+            )
+            file.write(
+                f"circle around {point.center.label:12s} {point.center.format_pilot():20s}, FL{point.center.fl:03d}, {tstart:%H:%M:%S %Z} - {tend:%H:%M:%S %Z}, radius: {radius_nm:.0f} nm, {abs(point.angle):.0f}° {direction}, enter from {az_to_text(az21)}, {point.center.note or ''}\n"
+            )
+
+    return file.getvalue()
+
+
 def to_txt(plan: FlightPlan):
     from io import StringIO
 
@@ -768,32 +802,8 @@ def to_txt(plan: FlightPlan):
 
     #
     # Detailed overview with notes
-    file.write("\n------------------------------------------------------------\n")
-    file.write("\n\nDetailed Overview:\n")
-    for i, point in enumerate(plan.path):
-        if isinstance(point, LatLon):
-            if i == 0:
-                prefix = ""
-            else:
-                prefix = "to"
-            file.write(
-                f"{prefix:13s} {point.label:12s} {point.format_pilot():20s}, FL{point.fl:03d}, {plan.computed_time_at_raw_index(i):%H:%M:%S %Z}, {point.note or ''}\n"
-            )
-        elif isinstance(point, IntoCircle):
-            tstart = plan.computed_time_at_raw_index(i)
-            tend = plan.computed_time_at_raw_index(i, end=True)
-            radius_nm = point.radius / 1852
-            direction = "CW" if point.angle > 0 else "CCW"
-            start_index = int(plan.ds.raw_points_start[i])
-            (az12, az21, dist) = geod.inv(
-                plan.ds.lon[start_index].values,
-                plan.ds.lat[start_index].values,
-                point.center.lon,
-                point.center.lat,
-            )
-            file.write(
-                f"circle around {point.center.label:12s} {point.center.format_pilot():20s}, FL{point.center.fl:03d}, {tstart:%H:%M:%S %Z} - {tend:%H:%M:%S %Z}, radius: {radius_nm:.0f} nm, {abs(point.angle):.0f}° {direction}, enter from {az_to_text(az21)}, {point.center.note or ''}\n"
-            )
+    file.write("\n------------------------------------------------------------\n\n\n")
+    file.write(to_detailed_txt(plan))
 
     file.write("\n\nCrew:")
     for position, person in plan.crew.items():
