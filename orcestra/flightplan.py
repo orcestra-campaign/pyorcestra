@@ -178,6 +178,9 @@ class FlightPlan:
     def show_details(self):
         print(to_detailed_txt(self))
 
+    def export(self):
+        return export_flightplan(self)
+
 
 def attach_flight_performance(ds, performance):
     second = np.timedelta64(1000000000, "ns")
