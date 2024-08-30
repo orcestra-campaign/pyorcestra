@@ -2,8 +2,9 @@ from __future__ import annotations
 import dataclasses
 import pathlib
 import xml.etree.ElementTree as ET
-from dataclasses import dataclass
-from typing import Optional
+from dataclasses import dataclass, field
+from functools import cached_property
+from typing import Optional, List, Dict
 from warnings import warn
 import datetime
 
@@ -11,6 +12,7 @@ import numpy as np
 import pyproj
 import scipy.signal
 import xarray as xr
+import pandas as pd
 from scipy.optimize import minimize
 from xarray.backends import BackendEntrypoint
 
@@ -132,6 +134,38 @@ class LatLon:
 bco = LatLon(13.079773, -59.487634, "BCO", fl=0)
 sal = LatLon(16.73448797020352, -22.94397423993749, "SAL", fl=0)
 mindelo = LatLon(16.877810, -24.995002, "MINDELO", fl=0)
+
+
+@dataclass(frozen=True)
+class FlightPlan:
+    path: List[LatLon | IntoCircle]
+    flight_id: Optional[str] = None
+    extra_waypoints: List[LatLon] = field(default_factory=list)
+    crew: Dict[str, str] = field(default_factory=dict)
+
+    @cached_property
+    def ds(self):
+        return expand_path(self.path, max_points=400)
+
+    @cached_property
+    def circles(self):
+        return [p for p in self.path if isinstance(p, IntoCircle)]
+
+    @cached_property
+    def waypoints_or_centers(self):
+        return [p.center if isinstance(p, IntoCircle) else p for p in self.path]
+
+    def computed_time_at_raw_index(self, i, end=False):
+        if end:
+            j = self.ds.raw_points_end[i]
+        else:
+            j = self.ds.raw_points_start[i]
+
+        return (
+            pd.Timestamp(self.ds.time[j].values)
+            .to_pydatetime(warn=False)
+            .replace(tzinfo=datetime.timezone.utc)
+        )
 
 
 def attach_flight_performance(ds, performance):
@@ -388,8 +422,10 @@ def simplify_path(path, return_backmap=False):
 
 
 def path_as_ds(path):
-    if isinstance(path, list):
-        return expand_path(path, max_points=400)
+    if isinstance(path, FlightPlan):
+        return path.ds
+    elif isinstance(path, list):
+        return FlightPlan(path).ds
     else:
         return path
 
@@ -689,7 +725,12 @@ def as_href(data, mime):
     return f"data:{mime};base64,{base64.b64encode(data).decode('ascii')}"
 
 
-def export_flightplan(flight_id, plan):
+def export_flightplan(flight_id_or_plan, plan=None):
+    if not plan:
+        plan = flight_id_or_plan
+        flight_id = plan.flight_id
+    else:
+        flight_id = flight_id_or_plan
     from ipywidgets import HTML
     from IPython.display import display
 
