@@ -719,6 +719,90 @@ def to_geojson(path):
     )
 
 
+def az_to_text(az):
+    sections = [
+        "north",
+        "north east",
+        "east",
+        "south east",
+        "south",
+        "south west",
+        "west",
+        "north west",
+    ]
+    return sections[int(((az + (360 / 2 / len(sections))) * len(sections) / 360) % 8)]
+
+
+def to_txt(plan: FlightPlan):
+    from io import StringIO
+
+    file = StringIO()
+
+    file.write(f"Flight {plan.flight_id}\n\n")
+    #
+    # DM Format
+    file.write("------------------------------------------------------------\n")
+    file.write("\nDM Format:\n")
+    file.write(
+        " ".join(point.format_1min() for point in plan.waypoints_or_centers) + "\n"
+    )
+    for point in plan.extra_waypoints:
+        file.write(f"Extra waypoint: {point.format_1min()}\n")
+    #
+    # DM.mm format
+    file.write("\n------------------------------------------------------------\n")
+    file.write("\nDMmm Format:\n")
+    for point in plan.waypoints_or_centers:
+        file.write(f"{point.format_pilot()}, {point.label}\n")
+    file.write("\n-- extra waypoints:\n")
+    for point in plan.extra_waypoints:
+        file.write(f"{point.format_pilot()}, {point.note or ''}\n")
+
+    #
+    # Detailed overview with notes
+    file.write("\n------------------------------------------------------------\n")
+    file.write("\n\nDetailed Overview:\n")
+    for i, point in enumerate(plan.path):
+        if isinstance(point, LatLon):
+            if i == 0:
+                prefix = ""
+            else:
+                prefix = "to"
+            file.write(
+                f"{prefix:13s} {point.label:12s} {point.format_pilot():20s}, FL{point.fl:03d}, {plan.computed_time_at_raw_index(i):%H:%M:%S %Z}, {point.note or ''}\n"
+            )
+        elif isinstance(point, IntoCircle):
+            tstart = plan.computed_time_at_raw_index(i)
+            tend = plan.computed_time_at_raw_index(i, end=True)
+            radius_nm = point.radius / 1852
+            direction = "CW" if point.angle > 0 else "CCW"
+            start_index = int(plan.ds.raw_points_start[i])
+            (az12, az21, dist) = geod.inv(
+                plan.ds.lon[start_index].values,
+                plan.ds.lat[start_index].values,
+                point.center.lon,
+                point.center.lat,
+            )
+            file.write(
+                f"circle around {point.center.label:12s} {point.center.format_pilot():20s}, FL{point.center.fl:03d}, {tstart:%H:%M:%S %Z} - {tend:%H:%M:%S %Z}, radius: {radius_nm:.0f} nm, {abs(point.angle):.0f}° {direction}, enter from {az_to_text(az21)}, {point.center.note or ''}\n"
+            )
+
+    file.write("\n -- circle centers:")
+    for point in plan.path:
+        if isinstance(point, IntoCircle):
+            point = point.center
+            file.write(f"\n{point.label:12s} {point.format_pilot()}")
+    file.write("\n\n -- extra waypoints:")
+    for point in plan.extra_waypoints:
+        file.write(f"\n{point.label:12s} {point.format_pilot()}, {point.note or ''}")
+
+    file.write("\n\nCrew:")
+    for position, person in plan.crew.items():
+        file.write(f"\n{position:22s} {person}")
+
+    return file.getvalue()
+
+
 def as_href(data, mime):
     import base64
 
@@ -736,6 +820,7 @@ def export_flightplan(flight_id_or_plan, plan=None):
 
     kml = to_kml(plan)
     geojson = to_geojson(plan)
+    txt = to_txt(plan)
 
     # BUTTONS
     html = f"""<html>
@@ -751,6 +836,9 @@ def export_flightplan(flight_id_or_plan, plan=None):
     </a>
     <a download="{flight_id}.kml" href="{as_href(kml.encode('utf-8'), 'application/vnd.google-earth.kml+xml')}" download>
     <button class="p-Widget jupyter-widgets jupyter-button widget-button mod-warning">KML</button>
+    </a>
+    <a download="{flight_id}_waypoints.txt" href="{as_href(txt.encode('utf-8'), 'text/plain')}" download>
+    <button class="p-Widget jupyter-widgets jupyter-button widget-button mod-warning">TXT</button>
     </a>
     </body>
     </html>
