@@ -145,7 +145,7 @@ class FlightPlan:
 
     @cached_property
     def ds(self):
-        return expand_path(self.path, max_points=400)
+        return expand_path(self.path, max_points=400, return_raw_points=True)
 
     @cached_property
     def circles(self):
@@ -194,7 +194,7 @@ def attach_flight_performance(ds, performance):
     return ds
 
 
-def expand_path(path: list[LatLon], dx=None, max_points=None):
+def expand_path(path: list[LatLon], dx=None, max_points=None, return_raw_points=False):
     """
     NOTE: this function follows great circles
     """
@@ -288,18 +288,6 @@ def expand_path(path: list[LatLon], dx=None, max_points=None):
         {
             "waypoint_indices": ("waypoint", indices),
             "waypoint_labels": ("waypoint", labels),
-            "raw_points_start": (
-                "raw_points",
-                simple_path_indices[
-                    [i.start if isinstance(i, slice) else i for i in backmap]
-                ],
-            ),
-            "raw_points_end": (
-                "raw_points",
-                simple_path_indices[
-                    [i.stop - 1 if isinstance(i, slice) else i for i in backmap]
-                ],
-            ),
         },
         coords={
             "distance": ("distance", dists),
@@ -308,6 +296,24 @@ def expand_path(path: list[LatLon], dx=None, max_points=None):
             "fl": ("distance", fls),
         },
     )
+
+    if return_raw_points:
+        ds = ds.assign(
+            {
+                "raw_points_start": (
+                    "raw_points",
+                    simple_path_indices[
+                        [i.start if isinstance(i, slice) else i for i in backmap]
+                    ],
+                ),
+                "raw_points_end": (
+                    "raw_points",
+                    simple_path_indices[
+                        [i.stop - 1 if isinstance(i, slice) else i for i in backmap]
+                    ],
+                ),
+            }
+        )
 
     if performance := get_current_performance():
         ds = ds.pipe(attach_flight_performance, performance)
