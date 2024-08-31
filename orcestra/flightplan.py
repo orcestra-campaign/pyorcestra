@@ -2,8 +2,9 @@ from __future__ import annotations
 import dataclasses
 import pathlib
 import xml.etree.ElementTree as ET
-from dataclasses import dataclass
-from typing import Optional
+from dataclasses import dataclass, field
+from functools import cached_property
+from typing import Optional, List, Dict
 from warnings import warn
 import datetime
 
@@ -11,6 +12,7 @@ import numpy as np
 import pyproj
 import scipy.signal
 import xarray as xr
+import pandas as pd
 from scipy.optimize import minimize
 from xarray.backends import BackendEntrypoint
 
@@ -76,6 +78,7 @@ class LatLon:
     label: Optional[str] = None
     fl: Optional[float] = None
     time: Optional[datetime.datetime | str] = None
+    note: Optional[str] = None
 
     def __post_init__(self):
         if isinstance(self.time, (str, np.datetime64, xr.DataArray)):
@@ -133,6 +136,52 @@ sal = LatLon(16.73448797020352, -22.94397423993749, "SAL", fl=0)
 mindelo = LatLon(16.877810, -24.995002, "MINDELO", fl=0)
 
 
+@dataclass(frozen=True)
+class FlightPlan:
+    path: List[LatLon | IntoCircle]
+    flight_id: Optional[str] = None
+    extra_waypoints: List[LatLon] = field(default_factory=list)
+    crew: Dict[str, str] = field(default_factory=dict)
+
+    @cached_property
+    def ds(self):
+        return expand_path(self.path, max_points=400, return_raw_points=True)
+
+    @cached_property
+    def circles(self):
+        return [p for p in self.path if isinstance(p, IntoCircle)]
+
+    @cached_property
+    def waypoints_or_centers(self):
+        return [p.center if isinstance(p, IntoCircle) else p for p in self.path]
+
+    def computed_time_at_raw_index(self, i, end=False):
+        if end:
+            j = self.ds.raw_points_end[i]
+        else:
+            j = self.ds.raw_points_start[i]
+
+        return (
+            pd.Timestamp(self.ds.time[j].values)
+            .to_pydatetime(warn=False)
+            .replace(tzinfo=datetime.timezone.utc)
+        )
+
+    @cached_property
+    def takeoff_time(self):
+        return self.computed_time_at_raw_index(0)
+
+    @cached_property
+    def landing_time(self):
+        return self.computed_time_at_raw_index(-1, end=True)
+
+    def show_details(self):
+        print(to_detailed_txt(self))
+
+    def export(self):
+        return export_flightplan(self)
+
+
 def attach_flight_performance(ds, performance):
     second = np.timedelta64(1000000000, "ns")
     ds = ds.assign(speed=(ds.fl.dims, performance.speed_at_fl(ds.fl)))
@@ -145,12 +194,12 @@ def attach_flight_performance(ds, performance):
     return ds
 
 
-def expand_path(path: list[LatLon], dx=None, max_points=None):
+def expand_path(path: list[LatLon], dx=None, max_points=None, return_raw_points=False):
     """
     NOTE: this function follows great circles
     """
 
-    path = simplify_path(path)
+    path, backmap = simplify_path(path, return_backmap=True)
     lon_points = np.asarray([p.lon for p in path])
     lat_points = np.asarray([p.lat for p in path])
     fl_points = np.asarray([p.fl if p.fl is not None else np.nan for p in path])
@@ -247,6 +296,24 @@ def expand_path(path: list[LatLon], dx=None, max_points=None):
             "fl": ("distance", fls),
         },
     )
+
+    if return_raw_points:
+        ds = ds.assign(
+            {
+                "raw_points_start": (
+                    "raw_points",
+                    simple_path_indices[
+                        [i.start if isinstance(i, slice) else i for i in backmap]
+                    ],
+                ),
+                "raw_points_end": (
+                    "raw_points",
+                    simple_path_indices[
+                        [i.stop - 1 if isinstance(i, slice) else i for i in backmap]
+                    ],
+                ),
+            }
+        )
 
     if performance := get_current_performance():
         ds = ds.pipe(attach_flight_performance, performance)
@@ -348,23 +415,37 @@ class IntoCircle:
         return points
 
 
-def simplify_path(path):
+def simplify_path(path, return_backmap=False):
+    backmap = []
+
     def _gen():
         last = None
+        i = 0
         for p in path:
             if callable(p):
+                first = i
                 for last in p(last):
                     yield last
+                    i += 1
+                backmap.append(slice(first, i))
             else:
                 last = p
                 yield last
+                backmap.append(i)
+                i += 1
 
-    return list(_gen())
+    out_path = list(_gen())
+    if return_backmap:
+        return out_path, backmap
+    else:
+        return out_path
 
 
 def path_as_ds(path):
-    if isinstance(path, list):
-        return expand_path(path, max_points=400)
+    if isinstance(path, FlightPlan):
+        return path.ds
+    elif isinstance(path, list):
+        return FlightPlan(path).ds
     else:
         return path
 
@@ -383,12 +464,12 @@ def track_len(ds):
     return path_len(ds)
 
 
-def plot_path(path, ax, color="C1", label=None, show_waypoints=True):
+def plot_path(plan, ax, color="C1", label=None, show_waypoints=True, extra_color="C3"):
     import cartopy.crs as ccrs
 
-    path = path_as_ds(path)
+    ds = path_as_ds(plan)
 
-    ax.plot(path.lon, path.lat, transform=ccrs.Geodetic(), label=label, color=color)
+    ax.plot(ds.lon, ds.lat, transform=ccrs.Geodetic(), label=label, color=color)
 
     if show_waypoints:
         import matplotlib.patheffects as pe
@@ -396,29 +477,58 @@ def plot_path(path, ax, color="C1", label=None, show_waypoints=True):
         import textalloc as ta
         from matplotlib.colors import to_rgba, to_hex
 
-        # deduplicate labels
-        lon, lat, text = zip(
-            *set(
-                zip(
-                    path.lon[path.waypoint_indices].values,
-                    path.lat[path.waypoint_indices].values,
-                    path.waypoint_labels.values,
-                )
+        labels = set(
+            zip(
+                ds.lon[ds.waypoint_indices].values,
+                ds.lat[ds.waypoint_indices].values,
+                ds.waypoint_labels.values,
             )
         )
 
+        if isinstance(plan, FlightPlan):
+            centers = set(
+                [(c.center.lon, c.center.lat, c.center.label) for c in plan.circles]
+            )
+            labels |= centers
+
+            extra_points = set([(p.lon, p.lat, p.label) for p in plan.extra_waypoints])
+        else:
+            extra_points = set()
+
+        if extra_points:
+            elon, elat, _ = zip(*extra_points)
+            ax.scatter(
+                elon,
+                elat,
+                transform=ccrs.Geodetic(),
+                color=extra_color,
+                marker="+",
+                s=10,
+            )
+
+        # deduplicate labels
+        lon, lat, text = zip(*labels, *extra_points)
+
         label_color = to_rgba(color)
         line_color = label_color[:3] + (label_color[3] * 0.5,)
+        extra_label_color = to_rgba(extra_color)
+        extra_line_color = extra_label_color[:3] + (extra_label_color[3] * 0.5,)
 
         ta.allocate(
             ax,
             lon,
             lat,
             text,
-            x_lines=[path.lon],
-            y_lines=[path.lat],
-            linecolor=to_hex(line_color, True),
-            textcolor=to_hex(label_color, True),
+            x_lines=[ds.lon],
+            y_lines=[ds.lat],
+            linecolor=[
+                *([to_hex(line_color, True)] * len(labels)),
+                *([to_hex(extra_line_color, True)] * len(extra_points)),
+            ],
+            textcolor=[
+                *([to_hex(label_color, True)] * len(labels)),
+                *([to_hex(extra_label_color, True)] * len(extra_points)),
+            ],
             path_effects=[pe.withStroke(linewidth=4, foreground="white")],
         )
 
@@ -659,21 +769,127 @@ def to_geojson(path):
     )
 
 
+def az_to_text(az):
+    sections = [
+        "north",
+        "north east",
+        "east",
+        "south east",
+        "south",
+        "south west",
+        "west",
+        "north west",
+    ]
+    return sections[int(((az + (360 / 2 / len(sections))) * len(sections) / 360) % 8)]
+
+
+def to_detailed_txt(plan: FlightPlan):
+    from io import StringIO
+
+    file = StringIO()
+
+    file.write("Detailed Overview:\n")
+    for i, point in enumerate(plan.path):
+        if isinstance(point, LatLon):
+            if i == 0:
+                prefix = ""
+            else:
+                prefix = "to"
+            file.write(
+                f"{prefix:13s} {point.label:12s} {point.format_pilot():20s}, FL{point.fl:03d}, {plan.computed_time_at_raw_index(i):%H:%M:%S %Z}, {point.note or ''}\n"
+            )
+        elif isinstance(point, IntoCircle):
+            tstart = plan.computed_time_at_raw_index(i)
+            tend = plan.computed_time_at_raw_index(i, end=True)
+            radius_nm = point.radius / 1852
+            direction = "CW" if point.angle > 0 else "CCW"
+            start_index = int(plan.ds.raw_points_start[i])
+            (az12, az21, dist) = geod.inv(
+                plan.ds.lon[start_index].values,
+                plan.ds.lat[start_index].values,
+                point.center.lon,
+                point.center.lat,
+            )
+            file.write(
+                f"circle around {point.center.label:12s} {point.center.format_pilot():20s}, FL{point.center.fl:03d}, {tstart:%H:%M:%S %Z} - {tend:%H:%M:%S %Z}, radius: {radius_nm:.0f} nm, {abs(point.angle):.0f}° {direction}, enter from {az_to_text(az21)}, {point.center.note or ''}\n"
+            )
+
+    return file.getvalue()
+
+
+def to_txt(plan: FlightPlan):
+    from io import StringIO
+
+    file = StringIO()
+
+    file.write(f"Flight {plan.flight_id}\n\n")
+    #
+    # DM Format
+    file.write("------------------------------------------------------------\n")
+    file.write("\nDM Format:\n")
+    file.write(
+        " ".join(point.format_1min() for point in plan.waypoints_or_centers) + "\n"
+    )
+    for point in plan.extra_waypoints:
+        file.write(f"Extra waypoint: {point.format_1min()}\n")
+    #
+    # DM.mm format
+    file.write("\n------------------------------------------------------------\n")
+    file.write("\nDMmm Format:\n")
+    for point in plan.waypoints_or_centers:
+        file.write(f"{point.format_pilot()}, {point.label}\n")
+    file.write("\n-- extra waypoints:\n")
+    for point in plan.extra_waypoints:
+        file.write(f"{point.format_pilot()}, {point.note or ''}\n")
+
+    #
+    # Detailed overview with notes
+    file.write("\n------------------------------------------------------------\n\n\n")
+    file.write(to_detailed_txt(plan))
+
+    file.write("\n\nCrew:")
+    for position, person in plan.crew.items():
+        file.write(f"\n{position:22s} {person}")
+
+    return file.getvalue()
+
+
 def as_href(data, mime):
     import base64
 
     return f"data:{mime};base64,{base64.b64encode(data).decode('ascii')}"
 
 
-def export_flightplan(flight_id, plan):
+def export_flightplan(flight_id_or_plan, plan=None):
+    if not plan:
+        plan = flight_id_or_plan
+        flight_id = plan.flight_id
+    else:
+        flight_id = flight_id_or_plan
     from ipywidgets import HTML
     from IPython.display import display
 
-    kml = to_kml(plan)
-    geojson = to_geojson(plan)
+    exports = [
+        (
+            ".geojson",
+            "GeoJSON",
+            "application/geo+json",
+            to_geojson(plan).encode("utf-8"),
+        ),
+        (
+            ".kml",
+            "KML",
+            "application/vnd.google-earth.kml+xml",
+            to_kml(plan).encode("utf-8"),
+        ),
+    ]
+    if isinstance(plan, FlightPlan):
+        exports.append(
+            ("_waypoints.txt", "TXT", "text/plain", to_txt(plan).encode("utf-8"))
+        )
 
     # BUTTONS
-    html = f"""<html>
+    html = """<html>
     <head>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     </head>
@@ -681,12 +897,14 @@ def export_flightplan(flight_id, plan):
     <h2>
     Download Flightplan as:
     </h2>
-    <a download="{flight_id}.geojson" href="{as_href(geojson.encode('utf-8'), 'application/geo+json')}" download>
-    <button class="p-Widget jupyter-widgets jupyter-button widget-button mod-warning">GeoJSON</button>
-    </a>
-    <a download="{flight_id}.kml" href="{as_href(kml.encode('utf-8'), 'application/vnd.google-earth.kml+xml')}" download>
-    <button class="p-Widget jupyter-widgets jupyter-button widget-button mod-warning">KML</button>
-    </a>
+    """
+    for suffix, name, mime, data in exports:
+        html += f"""
+            <a download="{flight_id}{suffix}" href="{as_href(data, mime)}" download>
+            <button class="p-Widget jupyter-widgets jupyter-button widget-button mod-warning">{name}</button>
+            </a>
+            """
+    html += """
     </body>
     </html>
     """
