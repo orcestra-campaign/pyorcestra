@@ -492,6 +492,7 @@ def vertical_preview(path):
     for point in path.distance[path.waypoint_indices]:
         ax.axvline(point, color="k", lw=1)
     ax.plot(path.distance, path.fl, color="C1", lw=2)
+    ax.set_title("Profile")
 
 
 def path_preview(
