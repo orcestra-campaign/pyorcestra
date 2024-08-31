@@ -488,9 +488,8 @@ def plot_path(plan, ax, color="C1", label=None, show_waypoints=True, extra_color
         if isinstance(plan, FlightPlan):
             centers = set(
                 [
-                    (p.center.lon, p.center.lat, p.center.label)
-                    for p in plan.path
-                    if isinstance(p, IntoCircle)
+                    (c.center.lon, c.center.lat, c.center.label)
+                    for c in plan.circles
                 ]
             )
             labels |= centers
