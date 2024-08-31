@@ -756,6 +756,43 @@ def find_ec_lon(lat_sel, ec_lons, ec_lats):
     return np.interp(lat_sel, ec_lats, ec_lons)
 
 
+def point_on_track(track, lat=None, lon=None, with_time=False):
+    assert (lat is None and lon is not None) or (lat is not None and lon is None)
+
+    lats = track.lat.values
+    lons = track.lon.values
+
+    if lat is not None:
+        if not np.all(np.diff(lats) > 0):
+            lats = lats[::-1]
+            lons = lons[::-1]
+        assert np.all(np.diff(lats) > 0), "latitude values are not monotonic"
+        assert lats[0] <= lat <= lats[-1], "requested latitude is not in range"
+        point = LatLon(lat, float(np.interp(lat, lats, lons)))
+    elif lon is not None:
+        if not np.all(np.diff(lons) > 0):
+            lats = lats[::-1]
+            lons = lons[::-1]
+        assert np.all(np.diff(lons) > 0), "longitude values are not monotonic"
+        assert lons[0] <= lon <= lons[-1], "requested longitude is not in range"
+        point = LatLon(float(np.interp(lon, lons, lats)), lon)
+
+    if with_time:
+        e = np.datetime64("2024-08-01")
+        s = np.timedelta64(1, "ns")
+        if lat is not None:
+            time = ((track.swap_dims({"time": "lat"}).time - e) / s).interp(
+                lat=lat
+            ) * s + e
+        elif lon is not None:
+            time = ((track.swap_dims({"time": "lon"}).time - e) / s).interp(
+                lon=lon
+            ) * s + e
+        point = point.assign(time=time.values)
+
+    return point
+
+
 def ec_time_at_lat(ec_track, lat):
     e = np.datetime64("2024-08-01")
     s = np.timedelta64(1, "ns")
