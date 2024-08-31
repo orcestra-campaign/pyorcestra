@@ -332,7 +332,7 @@ class IntoCircle:
                     f"could not find a solution for circle {self} with start point {start}, maybe start is inside cirle. You may want to try without specifying `enter`."
                 )
 
-        angles = np.linspace(start_angle, start_angle + self.angle, 30)
+        angles = np.linspace(start_angle, start_angle + self.angle, 90)
         lons, lats, rev_az = geod.fwd(
             np.full_like(angles, self.center.lon),
             np.full_like(angles, self.center.lat),
