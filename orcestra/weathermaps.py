@@ -93,6 +93,8 @@ def dropsondes_overlay(
     markershape="o",
     markersize=40,
     edgecolor="grey",
+    vmin=45,
+    vmax=70,
 ):
     from mpl_toolkits.axes_grid1 import make_axes_locatable
 
@@ -105,6 +107,8 @@ def dropsondes_overlay(
         transform=ccrs.PlateCarree(),
         c=dropsonde_ds[variable],
         cmap=colormap,
+        vmin=vmin,
+        vmax=vmax,
     )
 
     divider = make_axes_locatable(ax)
