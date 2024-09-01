@@ -123,6 +123,28 @@ def _trim_dataset(ds, dim="time"):
     return trimmed_ds
 
 
+def _filter_spikes(ds):
+    """
+    Filters out spikes in a time series by comparing the difference between each point
+    and the minimum of the surrounding 5 minutes.
+
+    Parameters
+    ----------
+    ds : xr.DataArray
+        DataArray to filter.
+
+    Returns
+    -------
+    xr.DataArray
+        Filtered DataArray.
+    """
+    diff = ds - ds.rolling(time=4 * 60 * 5, center=True, min_periods=1).min()
+    threshold = diff.std() * 1
+    filtered = ds.where(abs(diff) < threshold)
+    interpolated = filtered.interpolate_na("time", method="linear")
+    return xr.where(abs(diff) < threshold, ds, interpolated)
+
+
 def coarsen_radiometer(ds):
     """Coarsen radiometer data to 1 Hz.
 
