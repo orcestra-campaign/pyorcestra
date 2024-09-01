@@ -145,23 +145,6 @@ def _filter_spikes(ds):
     return xr.where(abs(diff) < threshold, ds, interpolated)
 
 
-def coarsen_radiometer(ds):
-    """Coarsen radiometer data to 1 Hz.
-
-    Parameters
-    ----------
-    ds : xr.Dataset
-        Level0 radiometer dataset.
-
-    Returns
-    -------
-    xr.Dataset
-        Radiometer data coarsened to 1 Hz.
-    """
-
-    return ds.coarsen(time=4, boundary="pad").mean().drop_duplicates("time")
-
-
 def filter_radar(ds, roll):
     """Filter radar data for noise, valid radar states, and roll angle.
 
