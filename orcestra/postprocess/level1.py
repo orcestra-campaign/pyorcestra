@@ -190,6 +190,23 @@ def filter_radiometer(ds, height, roll):
     )
 
 
+def filter_iwv(ds):
+    """Filter IWV data for spikes.
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+        Level0 IWV dataset.
+
+    Returns
+    -------
+    xr.Dataset
+        IWV data filtered for spikes.
+    """
+
+    return ds.pipe(_filter_spikes)
+
+
 def correct_radar_height(ds, roll, pitch, altitude):
     """Correct radar range gates with HALO flight altitude to height above WGS84 ellipsoid.
 
