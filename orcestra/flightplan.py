@@ -206,6 +206,9 @@ class FlightPlan:
     def export(self):
         return export_flightplan(self)
 
+    def preview(self, **kwargs):
+        return path_preview(self, **kwargs)
+
 
 def attach_flight_performance(ds, performance):
     second = np.timedelta64(1000000000, "ns")
