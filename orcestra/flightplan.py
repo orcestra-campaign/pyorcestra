@@ -660,12 +660,12 @@ def vertical_preview(path):
 
 
 def path_preview(
-    path, coastlines=True, gridlines=True, ax=None, size=8, aspect=16 / 9, **kwargs
+    plan, coastlines=True, gridlines=True, ax=None, size=8, aspect=16 / 9, **kwargs
 ):
     import matplotlib.pylab as plt
     import cartopy.crs as ccrs
 
-    path = path_as_ds(path)
+    path = path_as_ds(plan)
 
     lon_min = path.lon.values.min()
     lon_max = path.lon.values.max()
@@ -704,7 +704,7 @@ def path_preview(
         no_cartopy_download_warning()
         ax.gridlines(draw_labels=True, alpha=0.25)
 
-    plot_path(path, ax=ax, label="path", **kwargs)
+    plot_path(plan, ax=ax, label="path", **kwargs)
     return ax
 
 
