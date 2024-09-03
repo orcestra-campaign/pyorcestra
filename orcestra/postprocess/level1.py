@@ -123,7 +123,7 @@ def _trim_dataset(ds, dim="time"):
     return trimmed_ds
 
 
-def _filter_spikes(ds):
+def _filter_spikes(ds, threshold=5, window=1200):
     """
     Filters out spikes in a time series by comparing the difference between each point
     and the minimum of the surrounding 5 minutes.
@@ -132,14 +132,17 @@ def _filter_spikes(ds):
     ----------
     ds : xr.DataArray
         DataArray to filter.
+    threshold : float
+        Maximum allowed difference between the data and the minimum within the window.
+    window : int
+        Size of the window in seconds to compare the data, default is 5 minutes.
 
     Returns
     -------
     xr.DataArray
         Filtered DataArray.
     """
-    diff = ds - ds.rolling(time=4 * 60 * 5, center=True, min_periods=1).min()
-    threshold = diff.std() * 1
+    diff = ds - ds.rolling(time=window, center=True, min_periods=1).min()
     filtered = ds.where(abs(diff) < threshold)
     interpolated = filtered.interpolate_na("time", method="linear")
     return xr.where(abs(diff) < threshold, ds, interpolated)
