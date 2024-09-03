@@ -69,3 +69,10 @@ def radiometer(ds):
             _fix_radiometer_time,
         )
     )
+
+
+def iwv(ds):
+    """Post-processing of IWV datasets."""
+    return ds.pipe(
+        _fix_radiometer_time,
+    )

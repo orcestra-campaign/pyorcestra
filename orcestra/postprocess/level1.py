@@ -123,21 +123,29 @@ def _trim_dataset(ds, dim="time"):
     return trimmed_ds
 
 
-def coarsen_radiometer(ds):
-    """Coarsen radiometer data to 1 Hz.
+def _filter_spikes(ds, threshold=5, window=1200):
+    """
+    Filters out spikes in a time series by comparing the difference between each point
+    and the minimum of the surrounding 5 minutes.
 
     Parameters
     ----------
-    ds : xr.Dataset
-        Level0 radiometer dataset.
+    ds : xr.DataArray
+        DataArray to filter.
+    threshold : float
+        Maximum allowed difference between the data and the minimum within the window.
+    window : int
+        Size of the window in seconds to compare the data, default is 5 minutes.
 
     Returns
     -------
-    xr.Dataset
-        Radiometer data coarsened to 1 Hz.
+    xr.DataArray
+        Filtered DataArray.
     """
-
-    return ds.coarsen(time=4, boundary="pad").mean().drop_duplicates("time")
+    diff = ds - ds.rolling(time=window, center=True, min_periods=1).min()
+    filtered = ds.where(abs(diff) < threshold)
+    interpolated = filtered.interpolate_na("time", method="linear")
+    return xr.where(abs(diff) < threshold, ds, interpolated)
 
 
 def filter_radar(ds, roll):
@@ -183,6 +191,23 @@ def filter_radiometer(ds, height, roll):
     return (
         ds.pipe(_altitude_filter, height).pipe(_roll_filter, roll).pipe(_trim_dataset)
     )
+
+
+def filter_iwv(ds):
+    """Filter IWV data for spikes.
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+        Level0 IWV dataset.
+
+    Returns
+    -------
+    xr.Dataset
+        IWV data filtered for spikes.
+    """
+
+    return ds.pipe(_filter_spikes)
 
 
 def correct_radar_height(ds, roll, pitch, altitude):
