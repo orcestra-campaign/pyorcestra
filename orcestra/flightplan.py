@@ -144,6 +144,18 @@ class FlightPlan:
     crew: Dict[str, str] = field(default_factory=dict)
 
     @cached_property
+    def _simple_path_and_backmap(self):
+        return simplify_path(self.path, return_backmap=True)
+
+    @property
+    def simple_path(self):
+        return self._simple_path_and_backmap[0]
+
+    @property
+    def simple_backmap(self):
+        return self._simple_path_and_backmap[1]
+
+    @cached_property
     def ds(self):
         return expand_path(self.path, max_points=400, return_raw_points=True)
 
@@ -383,6 +395,20 @@ class IntoCircle:
         assert (
             self.center.time is None
         ), "The time attribute of the center coordinate of a circle MUST be None. I.e. a circle will have a duration, thus you can't assign it a point in time."
+
+    def is_on_entry_path(self):
+        """
+        Returns true, if circle center is on the flight path into the circle.
+        """
+        return self.enter is None or self.enter % 180 == 90
+
+    def is_entry_through(self):
+        """
+        Returns true, if entry into circle first crosses the circle.
+        """
+        if self.enter is None:
+            return False
+        return (self.enter + 180) % 360 - 180 > 0
 
     def __call__(self, start: LatLon, include_start: bool = False):
         if self.enter is None:
@@ -817,15 +843,29 @@ def to_detailed_txt(plan: FlightPlan):
             tend = plan.computed_time_at_raw_index(i, end=True)
             radius_nm = point.radius / 1852
             direction = "CW" if point.angle > 0 else "CCW"
-            start_index = int(plan.ds.raw_points_start[i])
+            simple_slice = plan.simple_backmap[i]
+            first_point = plan.simple_path[simple_slice.start]
             (az12, az21, dist) = geod.inv(
-                plan.ds.lon[start_index].values,
-                plan.ds.lat[start_index].values,
+                first_point.lon,
+                first_point.lat,
                 point.center.lon,
                 point.center.lat,
             )
+            if not point.is_on_entry_path():
+                file.write(
+                    f"{'to (helper)':13s} {first_point.label:12s} {first_point.format_pilot():20s}, FL{first_point.fl:03d}, {tstart:%H:%M:%S %Z}, upcoming circle will be entered here\n"
+                )
+            notes = [
+                f"radius: {radius_nm:.0f} nm",
+                f"{abs(point.angle):.0f}° {direction}",
+                f"enter from {az_to_text(az21)}",
+            ]
+            if point.is_entry_through():
+                notes.append("fly through circle before entering")
+            if point.center.note:
+                notes.append(point.center.note)
             file.write(
-                f"circle around {point.center.label:12s} {point.center.format_pilot():20s}, FL{point.center.fl:03d}, {tstart:%H:%M:%S %Z} - {tend:%H:%M:%S %Z}, radius: {radius_nm:.0f} nm, {abs(point.angle):.0f}° {direction}, enter from {az_to_text(az21)}, {point.center.note or ''}\n"
+                f"circle around {point.center.label:12s} {point.center.format_pilot():20s}, FL{point.center.fl:03d}, {tstart:%H:%M:%S %Z} - {tend:%H:%M:%S %Z}, {', '.join(notes)}\n"
             )
 
     return file.getvalue()
