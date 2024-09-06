@@ -263,6 +263,9 @@ class FlightPlan:
     def preview(self, **kwargs):
         return path_preview(self, **kwargs)
 
+    def profile(self, **kwargs):
+        return vertical_preview(self, **kwargs)
+
 
 def attach_flight_performance(ds, performance):
     second = np.timedelta64(1000000000, "ns")
@@ -1011,7 +1014,7 @@ def export_flightplan(flight_id_or_plan, plan=None):
             to_kml(plan).encode("utf-8"),
         ),
     ]
-    if isinstance(plan, FlightPlan):
+    if isinstance(plan, FlightPlan) and "time" in plan.ds:
         exports.append(
             ("_waypoints.txt", "TXT", "text/plain", to_txt(plan).encode("utf-8"))
         )
