@@ -16,7 +16,7 @@ import pandas as pd
 from scipy.optimize import minimize
 from xarray.backends import BackendEntrypoint
 
-from .flight_performance import get_flight_performance
+from .flight_performance import get_flight_performance, aircraft_performance
 from .utils import parse_datestr
 
 
@@ -183,14 +183,52 @@ class FlightPlan:
                 wps.append(p)
         return wps
 
+    def _require_flightlevels(self):
+        for i, wp in enumerate(self.path):
+            if isinstance(wp, IntoCircle):
+                wp = wp.center
+            if wp.fl is None:
+                raise ValueError(
+                    f"flight level information has to be set to proceed. It's missing in the {i}th point: {wp}"
+                )
+
+    def _require_performance(self):
+        if self.aircraft is None:
+            from warnings import warn
+
+            warn(
+                "The aircraft attribute of this FlightPlan is not set, but it's required for aircraft performance calculations. Currently, the code will proceed using the default aircraft performance, but the code may break in future.",
+                FutureWarning,
+            )
+        elif self.aircraft not in aircraft_performance:
+            raise ValueError(
+                f"Could not find aircraft performance for aircraft '{self.aircraft}'. Currently supported aircraft are {list(sorted(aircraft_performance))}."
+            )
+
+    def _require_time(self):
+        self._require_flightlevels()
+        self._require_performance()
+        if "time" not in self.ds:
+            raise ValueError(
+                "Could not compute time for this FlightPlan. You have to assign a `time` attribute to one of the waypoints along the path."
+            )
+
     def computed_time_at_raw_index(self, i, end=False):
+        self._require_time()
         if end:
             j = self.ds.raw_points_end[i]
         else:
             j = self.ds.raw_points_start[i]
 
+        try:
+            time = self.ds.time[j].values
+        except AttributeError:
+            raise AttributeError(
+                "Could not compute time. You may be missing a waypoint with assigned reference time, or may be missing flight level information or aircraft performance information"
+            )
+
         return (
-            pd.Timestamp(self.ds.time[j].values)
+            pd.Timestamp(time)
             .to_pydatetime(warn=False)
             .replace(tzinfo=datetime.timezone.utc)
         )
@@ -939,6 +977,10 @@ def export_flightplan(flight_id_or_plan, plan=None):
         flight_id = plan.flight_id
     else:
         flight_id = flight_id_or_plan
+
+    if flight_id is None:
+        raise ValueError("You have to set a flight_id to export the flight plan.")
+
     from ipywidgets import HTML
     from IPython.display import display
 
