@@ -16,7 +16,7 @@ import pandas as pd
 from scipy.optimize import minimize
 from xarray.backends import BackendEntrypoint
 
-from .flight_performance import get_current_performance
+from .flight_performance import get_flight_performance
 from .utils import parse_datestr
 
 
@@ -143,6 +143,7 @@ class FlightPlan:
     flight_id: Optional[str] = None
     extra_waypoints: List[LatLon] = field(default_factory=list)
     crew: Dict[str, str] = field(default_factory=dict)
+    aircraft: Optional[str] = None
 
     @cached_property
     def _simple_path_and_backmap(self):
@@ -158,7 +159,9 @@ class FlightPlan:
 
     @cached_property
     def ds(self):
-        return expand_path(self.path, max_points=400, return_raw_points=True)
+        return expand_path(
+            self.path, max_points=400, return_raw_points=True, aircraft=self.aircraft
+        )
 
     @cached_property
     def circles(self):
@@ -222,7 +225,9 @@ def attach_flight_performance(ds, performance):
     return ds
 
 
-def expand_path(path: list[LatLon], dx=None, max_points=None, return_raw_points=False):
+def expand_path(
+    path: list[LatLon], dx=None, max_points=None, return_raw_points=False, aircraft=None
+):
     """
     NOTE: this function follows great circles
     """
@@ -343,7 +348,7 @@ def expand_path(path: list[LatLon], dx=None, max_points=None, return_raw_points=
             }
         )
 
-    if performance := get_current_performance():
+    if performance := get_flight_performance(aircraft=aircraft):
         ds = ds.pipe(attach_flight_performance, performance)
 
     points_with_time = [(i, p) for i, p in enumerate(path) if p.time is not None]
