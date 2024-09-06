@@ -241,6 +241,19 @@ class FlightPlan:
     def landing_time(self):
         return self.computed_time_at_raw_index(-1, end=True)
 
+    @cached_property
+    def duration(self):
+        self._require_flightlevels()
+        self._require_performance()
+        try:
+            d1 = self.ds.duration.values[0]
+            d2 = self.ds.duration.values[-1]
+        except AttributeError:
+            raise AttributeError(
+                "FlightPlan.duration could not be computed. Maybe you are missing flight level or aircraft performance data?"
+            )
+        return pd.Timedelta(d2 - d1).to_pytimedelta()
+
     def show_details(self):
         print(to_detailed_txt(self))
 
