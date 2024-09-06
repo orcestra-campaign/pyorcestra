@@ -155,6 +155,18 @@ class FlightPlan:
     def waypoints_or_centers(self):
         return [p.center if isinstance(p, IntoCircle) else p for p in self.path]
 
+    @cached_property
+    def important_labelled_waypoints(self):
+        wps = []
+        for i, p in enumerate(self.path):
+            if isinstance(p, IntoCircle) and p.center.label is not None:
+                if not p.is_on_entry_path():
+                    wps.append(self.simple_path[self.simple_backmap[i].start])
+                wps.append(p.center)
+            elif p.label is not None:
+                wps.append(p)
+        return wps
+
     def computed_time_at_raw_index(self, i, end=False):
         if end:
             j = self.ds.raw_points_end[i]
@@ -491,22 +503,20 @@ def plot_path(plan, ax, color="C1", label=None, show_waypoints=True, extra_color
         import textalloc as ta
         from matplotlib.colors import to_rgba, to_hex
 
-        labels = set(
-            zip(
-                ds.lon[ds.waypoint_indices].values,
-                ds.lat[ds.waypoint_indices].values,
-                ds.waypoint_labels.values,
-            )
-        )
-
         if isinstance(plan, FlightPlan):
-            centers = set(
-                [(c.center.lon, c.center.lat, c.center.label) for c in plan.circles]
+            labels = set(
+                [(p.lon, p.lat, p.label) for p in plan.important_labelled_waypoints]
             )
-            labels |= centers
 
             extra_points = set([(p.lon, p.lat, p.label) for p in plan.extra_waypoints])
         else:
+            labels = set(
+                zip(
+                    ds.lon[ds.waypoint_indices].values,
+                    ds.lat[ds.waypoint_indices].values,
+                    ds.waypoint_labels.values,
+                )
+            )
             extra_points = set()
 
         if extra_points:
