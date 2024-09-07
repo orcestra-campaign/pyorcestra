@@ -464,6 +464,20 @@ def track_len(ds):
     return path_len(ds)
 
 
+def first_point(path):
+    ds = path_as_ds(path)
+    lat = float(ds.lat.values[0])
+    lon = float(ds.lon.values[0])
+    return LatLon(lat, lon)
+
+
+def last_point(path):
+    ds = path_as_ds(path)
+    lat = float(ds.lat.values[-1])
+    lon = float(ds.lon.values[-1])
+    return LatLon(lat, lon)
+
+
 def plot_path(plan, ax, color="C1", label=None, show_waypoints=True, extra_color="C3"):
     import cartopy.crs as ccrs
 
