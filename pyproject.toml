@@ -16,6 +16,7 @@ python = ">=3.10"
 aiohttp = "*"
 astropy = "*"
 cartopy = "*"
+cmocean = "*"
 easygems = ">=0.0.8"
 flox = "*"  # part of xarray[accel]
 healpy = "*"
@@ -37,6 +38,9 @@ zarr = "*"
 [tool.poetry.group.test.dependencies]
 pytest = "*"
 pytest-watch = "*"
+
+[tool.poetry.scripts]
+cmap2windy = "orcestra.tools:cmap2windy"
 
 [tool.poetry-dynamic-versioning]
 enable = true
