@@ -74,6 +74,10 @@ def earthcare_track_loader():
     return TLETrackLoader(get_tle(NAME="EARTHCARE"))
 
 
+def pace_track_loader():
+    return TLETrackLoader(get_tle(CATNR="58928"))
+
+
 class CalipsoTrackLoader:
     ten_sec_file_re = re.compile(
         "^.*/CPSO_10second_GT_([0-9]{4})_([0-9]{2})_([0-9]{2}).txt$"
