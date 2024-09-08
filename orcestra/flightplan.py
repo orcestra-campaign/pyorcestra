@@ -706,7 +706,7 @@ def path_preview(
 
 def path_quickplot(path, sel_time, crossection=True):
     import intake
-    import healpy
+    import healpix
     import matplotlib.pylab as plt
     import cartopy.crs as ccrs
 
@@ -718,7 +718,7 @@ def path_quickplot(path, sel_time, crossection=True):
     era5 = cat.HERA5(time="PT1H").to_dask()
 
     pix = xr.DataArray(
-        healpy.ang2pix(2**7, path.lon, path.lat, nest=True, lonlat=True),
+        healpix.ang2pix(2**7, path.lon, path.lat, nest=True, lonlat=True),
         dims=("distance",),
         name="pix",
     )
