@@ -54,3 +54,10 @@ def set_current_performance(name_or_performance):
     if isinstance(name_or_performance, str):
         return set_current_performance(aircraft_performance[name_or_performance])
     CURRENT_PERFORMANCE = name_or_performance
+
+
+def get_flight_performance(aircraft=None):
+    if aircraft is None:
+        return get_current_performance()
+    else:
+        return aircraft_performance[aircraft]

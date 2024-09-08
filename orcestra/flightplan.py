@@ -16,7 +16,7 @@ import pandas as pd
 from scipy.optimize import minimize
 from xarray.backends import BackendEntrypoint
 
-from .flight_performance import get_current_performance
+from .flight_performance import get_flight_performance, aircraft_performance
 from .utils import parse_datestr
 
 
@@ -132,6 +132,7 @@ class LatLon:
 
 
 bco = LatLon(13.079773, -59.487634, "BCO", fl=0)
+bgi = tbpb = LatLon(13.074722, -59.4925, "TBPB", fl=0)
 sal = LatLon(16.73448797020352, -22.94397423993749, "SAL", fl=0)
 mindelo = LatLon(16.877810, -24.995002, "MINDELO", fl=0)
 
@@ -142,6 +143,7 @@ class FlightPlan:
     flight_id: Optional[str] = None
     extra_waypoints: List[LatLon] = field(default_factory=list)
     crew: Dict[str, str] = field(default_factory=dict)
+    aircraft: Optional[str] = None
 
     @cached_property
     def _simple_path_and_backmap(self):
@@ -157,7 +159,9 @@ class FlightPlan:
 
     @cached_property
     def ds(self):
-        return expand_path(self.path, max_points=400, return_raw_points=True)
+        return expand_path(
+            self.path, max_points=400, return_raw_points=True, aircraft=self.aircraft
+        )
 
     @cached_property
     def circles(self):
@@ -179,14 +183,52 @@ class FlightPlan:
                 wps.append(p)
         return wps
 
+    def _require_flightlevels(self):
+        for i, wp in enumerate(self.path):
+            if isinstance(wp, IntoCircle):
+                wp = wp.center
+            if wp.fl is None:
+                raise ValueError(
+                    f"flight level information has to be set to proceed. It's missing in the {i}th point: {wp}"
+                )
+
+    def _require_performance(self):
+        if self.aircraft is None:
+            from warnings import warn
+
+            warn(
+                "The aircraft attribute of this FlightPlan is not set, but it's required for aircraft performance calculations. Currently, the code will proceed using the default aircraft performance, but the code may break in future.",
+                FutureWarning,
+            )
+        elif self.aircraft not in aircraft_performance:
+            raise ValueError(
+                f"Could not find aircraft performance for aircraft '{self.aircraft}'. Currently supported aircraft are {list(sorted(aircraft_performance))}."
+            )
+
+    def _require_time(self):
+        self._require_flightlevels()
+        self._require_performance()
+        if "time" not in self.ds:
+            raise ValueError(
+                "Could not compute time for this FlightPlan. You have to assign a `time` attribute to one of the waypoints along the path."
+            )
+
     def computed_time_at_raw_index(self, i, end=False):
+        self._require_time()
         if end:
             j = self.ds.raw_points_end[i]
         else:
             j = self.ds.raw_points_start[i]
 
+        try:
+            time = self.ds.time[j].values
+        except AttributeError:
+            raise AttributeError(
+                "Could not compute time. You may be missing a waypoint with assigned reference time, or may be missing flight level information or aircraft performance information"
+            )
+
         return (
-            pd.Timestamp(self.ds.time[j].values)
+            pd.Timestamp(time)
             .to_pydatetime(warn=False)
             .replace(tzinfo=datetime.timezone.utc)
         )
@@ -199,11 +241,30 @@ class FlightPlan:
     def landing_time(self):
         return self.computed_time_at_raw_index(-1, end=True)
 
+    @cached_property
+    def duration(self):
+        self._require_flightlevels()
+        self._require_performance()
+        try:
+            d1 = self.ds.duration.values[0]
+            d2 = self.ds.duration.values[-1]
+        except AttributeError:
+            raise AttributeError(
+                "FlightPlan.duration could not be computed. Maybe you are missing flight level or aircraft performance data?"
+            )
+        return pd.Timedelta(d2 - d1).to_pytimedelta()
+
     def show_details(self):
         print(to_detailed_txt(self))
 
     def export(self):
         return export_flightplan(self)
+
+    def preview(self, **kwargs):
+        return path_preview(self, **kwargs)
+
+    def profile(self, **kwargs):
+        return vertical_preview(self, **kwargs)
 
 
 def attach_flight_performance(ds, performance):
@@ -218,7 +279,9 @@ def attach_flight_performance(ds, performance):
     return ds
 
 
-def expand_path(path: list[LatLon], dx=None, max_points=None, return_raw_points=False):
+def expand_path(
+    path: list[LatLon], dx=None, max_points=None, return_raw_points=False, aircraft=None
+):
     """
     NOTE: this function follows great circles
     """
@@ -339,7 +402,7 @@ def expand_path(path: list[LatLon], dx=None, max_points=None, return_raw_points=
             }
         )
 
-    if performance := get_current_performance():
+    if performance := get_flight_performance(aircraft=aircraft):
         ds = ds.pipe(attach_flight_performance, performance)
 
     points_with_time = [(i, p) for i, p in enumerate(path) if p.time is not None]
@@ -656,12 +719,12 @@ def vertical_preview(path):
 
 
 def path_preview(
-    path, coastlines=True, gridlines=True, ax=None, size=8, aspect=16 / 9, **kwargs
+    plan, coastlines=True, gridlines=True, ax=None, size=8, aspect=16 / 9, **kwargs
 ):
     import matplotlib.pylab as plt
     import cartopy.crs as ccrs
 
-    path = path_as_ds(path)
+    path = path_as_ds(plan)
 
     lon_min = path.lon.values.min()
     lon_max = path.lon.values.max()
@@ -700,7 +763,7 @@ def path_preview(
         no_cartopy_download_warning()
         ax.gridlines(draw_labels=True, alpha=0.25)
 
-    plot_path(path, ax=ax, label="path", **kwargs)
+    plot_path(plan, ax=ax, label="path", **kwargs)
     return ax
 
 
@@ -930,6 +993,10 @@ def export_flightplan(flight_id_or_plan, plan=None):
         flight_id = plan.flight_id
     else:
         flight_id = flight_id_or_plan
+
+    if flight_id is None:
+        raise ValueError("You have to set a flight_id to export the flight plan.")
+
     from ipywidgets import HTML
     from IPython.display import display
 
@@ -947,7 +1014,7 @@ def export_flightplan(flight_id_or_plan, plan=None):
             to_kml(plan).encode("utf-8"),
         ),
     ]
-    if isinstance(plan, FlightPlan):
+    if isinstance(plan, FlightPlan) and "time" in plan.ds:
         exports.append(
             ("_waypoints.txt", "TXT", "text/plain", to_txt(plan).encode("utf-8"))
         )
