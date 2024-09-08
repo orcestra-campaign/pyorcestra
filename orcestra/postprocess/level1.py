@@ -2,6 +2,7 @@ import numpy as np
 import xarray as xr
 import json
 import os
+import pandas as pd
 
 # Get the directory of the current script
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -148,6 +149,45 @@ def _filter_spikes(ds, threshold=5, window=1200):
     return xr.where(abs(diff) < threshold, ds, interpolated)
 
 
+def _filter_land(ds, mask, lat, lon, offset=pd.Timedelta("7s")):
+    """
+    Filters out data that was collected over land.
+    Removes data by offset earlier than the the time the plane flies over land
+    to avoid including land measurements due to tilt of the plane or mask inaccuracies.
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+        Dataset to filter.
+    mask : xr.DataArray
+        Mask of land and sea. 1 for sea, 0 for land.
+    lat : xr.DataArray
+        Latitudes of the path.
+    lon : xr.DataArray
+        Longitudes of the path.
+    offset : pd.Timedelta
+        Time offset to remove data before the plane flies over land. Default is 7 seconds.
+
+    Returns
+    -------
+    xr.Dataset
+        Filtered dataset.
+    """
+
+    mask_path = mask.sel(lat=lat, lon=lon, method="nearest")
+    mask_path_subsampled = mask_path.sel(time=ds.time, method="nearest").assign_coords(
+        time=ds.time
+    )
+    diff = (mask_path_subsampled * 1).diff("time")
+    start_land = diff.where(diff == -1).dropna("time").time
+    end_land = diff.where(diff == 1).dropna("time").time
+    for t in start_land:
+        mask_path_subsampled.loc[dict(time=slice(t - offset, t))] = 0
+    for t in end_land:
+        mask_path_subsampled.loc[dict(time=slice(t, t + offset))] = 0
+    return ds.where(mask_path_subsampled == 1)
+
+
 def filter_radar(ds, roll):
     """Filter radar data for noise, valid radar states, and roll angle.
 
@@ -170,7 +210,7 @@ def filter_radar(ds, roll):
     )
 
 
-def filter_radiometer(ds, height, roll):
+def filter_radiometer(ds, height, roll, lat, lon, mask):
     """Filter radiometer data for height and roll angle.
 
     Parameters
@@ -181,6 +221,12 @@ def filter_radiometer(ds, height, roll):
         Flight altitude in m.
     roll : xr.DataArray
         Flight roll angle in degrees.
+    lat : xr.DataArray
+        Latitudes of the flightpath.
+    lon : xr.DataArray
+        Longitudes of the flightpath.
+    mask : xr.DataArray
+        Mask of land and sea. 1 for sea, 0 for land.
 
     Returns
     -------
@@ -189,7 +235,10 @@ def filter_radiometer(ds, height, roll):
     """
 
     return (
-        ds.pipe(_altitude_filter, height).pipe(_roll_filter, roll).pipe(_trim_dataset)
+        ds.pipe(_altitude_filter, height)
+        .pipe(_roll_filter, roll)
+        .pipe(_trim_dataset)
+        .pipe(_filter_land, mask, lat, lon)
     )
 
 
