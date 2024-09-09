@@ -159,7 +159,7 @@ def _filter_land(ds, mask, lat, lon, offset=pd.Timedelta("7s")):
     ----------
     ds : xr.Dataset
         Dataset to filter.
-    mask : xr.DataArray
+    sea_land_mask : xr.DataArray
         Mask of land and sea. 1 for sea, 0 for land.
     lat : xr.DataArray
         Latitudes of the path.
@@ -174,7 +174,7 @@ def _filter_land(ds, mask, lat, lon, offset=pd.Timedelta("7s")):
         Filtered dataset.
     """
 
-    mask_path = mask.sel(lat=lat, lon=lon, method="nearest")
+    mask_path = sea_land_mask.sel(lat=lat, lon=lon, method="nearest")
     mask_path_subsampled = mask_path.sel(time=ds.time, method="nearest").assign_coords(
         time=ds.time
     )
