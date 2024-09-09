@@ -739,22 +739,29 @@ def plot_cwv(var, ax=None, levels=None):
 
 def vertical_preview(path):
     import matplotlib.pylab as plt
+    import pandas as pd
+    import seaborn as sns
 
     path = path_as_ds(path)
+    ftime = [f"{x:%H:%M}" for x in pd.to_datetime(path.time[path.waypoint_indices])]
 
     fig, ax = plt.subplots(figsize=(15, 6))
+    sns.despine(offset=10)
 
     secax = ax.secondary_xaxis("top")
     secax.set_xlabel("waypoints")
     secax.set_xticks(
-        path.distance[path.waypoint_indices],
+        path.time[path.waypoint_indices],
         path.waypoint_labels.values,
         rotation="vertical",
     )
-    for point in path.distance[path.waypoint_indices]:
-        ax.axvline(point, color="k", lw=1)
-    ax.plot(path.distance, path.fl, color="C1", lw=2)
-    ax.set_title("Profile")
+
+    ax.set_xticks(path.time[path.waypoint_indices], labels=ftime, rotation=60.0)
+    ax.set_yticks([200, 350, 410, 450])
+    ax.set_xlabel("Time / UTC")
+    ax.set_ylabel("Flight Level / hft")
+
+    ax.plot(path.time, path.fl, color="C1", lw=2)
 
 
 def path_preview(
