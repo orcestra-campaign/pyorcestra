@@ -150,8 +150,8 @@ def _filter_spikes(ds, threshold=5, window=1200):
 
 
 def _filter_land(ds, mask, lat, lon, offset=pd.Timedelta("7s")):
-    """
-    Filters out data that was collected over land.
+    """Filters out data that was collected over land.
+    
     Removes data by offset earlier than the the time the plane flies over land
     to avoid including land measurements due to tilt of the plane or mask inaccuracies.
 
