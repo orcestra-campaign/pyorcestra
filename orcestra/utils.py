@@ -64,7 +64,7 @@ def parse_datestr(datestr):
 @lru_cache
 def load_frontmatter(path):
     """Load and return the front matter section of a YAML file."""
-    with pathlib.Path(path).open("r") as fp:
+    with pathlib.Path(path).open("r", encoding="utf8") as fp:
         frontmatter = next(yaml.safe_load_all(fp))
 
     frontmatter["filepath"] = pathlib.Path(path).as_posix()
