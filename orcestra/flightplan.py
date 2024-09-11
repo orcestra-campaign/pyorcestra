@@ -737,7 +737,7 @@ def plot_cwv(var, ax=None, levels=None):
     plt.clabel(contour_lines, inline=True, fontsize=8, colors="grey", fmt="%d")
 
 
-def vertical_preview(path):
+def vertical_preview(path, color="C1", lw=2, **kwargs):
     import matplotlib.pylab as plt
     import pandas as pd
     import seaborn as sns
@@ -776,7 +776,7 @@ def vertical_preview(path):
     ax.set_yticks([200, 350, 410, 450])
     ax.set_ylabel("Flight Level / hft")
 
-    ax.plot(x, path.fl, color="C1", lw=2)
+    ax.plot(x, path.fl, color=color, lw=lw, **kwargs)
 
 
 def path_preview(
