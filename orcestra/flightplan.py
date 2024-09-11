@@ -743,25 +743,40 @@ def vertical_preview(path):
     import seaborn as sns
 
     path = path_as_ds(path)
-    ftime = [f"{x:%H:%M}" for x in pd.to_datetime(path.time[path.waypoint_indices])]
 
     fig, ax = plt.subplots(figsize=(15, 6))
     sns.despine(offset=10)
 
     secax = ax.secondary_xaxis("top")
     secax.set_xlabel("waypoints")
+
+    if "time" in path:
+        x = path.time
+        wpx = x[path.waypoint_indices]
+        ax.set_xticks(
+            wpx, labels=[f"{x:%H:%M}" for x in pd.to_datetime(wpx)], rotation=60.0
+        )
+        ax.set_xlabel("Time / UTC")
+    else:
+        x = path.distance
+        wpx = x[path.waypoint_indices]
+        ax.set_xticks(
+            path.distance[path.waypoint_indices],
+            labels=[f"{x/1000:.0f}" for x in wpx],
+            rotation=60.0,
+        )
+        ax.set_xlabel("Distance / km")
+
     secax.set_xticks(
-        path.time[path.waypoint_indices],
+        wpx,
         path.waypoint_labels.values,
         rotation="vertical",
     )
 
-    ax.set_xticks(path.time[path.waypoint_indices], labels=ftime, rotation=60.0)
     ax.set_yticks([200, 350, 410, 450])
-    ax.set_xlabel("Time / UTC")
     ax.set_ylabel("Flight Level / hft")
 
-    ax.plot(path.time, path.fl, color="C1", lw=2)
+    ax.plot(x, path.fl, color="C1", lw=2)
 
 
 def path_preview(
