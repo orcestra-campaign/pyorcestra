@@ -737,24 +737,46 @@ def plot_cwv(var, ax=None, levels=None):
     plt.clabel(contour_lines, inline=True, fontsize=8, colors="grey", fmt="%d")
 
 
-def vertical_preview(path):
+def vertical_preview(path, color="C1", lw=2, **kwargs):
     import matplotlib.pylab as plt
+    import pandas as pd
+    import seaborn as sns
 
     path = path_as_ds(path)
 
     fig, ax = plt.subplots(figsize=(15, 6))
+    sns.despine(offset=10)
 
     secax = ax.secondary_xaxis("top")
     secax.set_xlabel("waypoints")
+
+    if "time" in path:
+        x = path.time
+        wpx = x[path.waypoint_indices]
+        ax.set_xticks(
+            wpx, labels=[f"{x:%H:%M}" for x in pd.to_datetime(wpx)], rotation=60.0
+        )
+        ax.set_xlabel("Time / UTC")
+    else:
+        x = path.distance
+        wpx = x[path.waypoint_indices]
+        ax.set_xticks(
+            path.distance[path.waypoint_indices],
+            labels=[f"{x/1000:.0f}" for x in wpx],
+            rotation=60.0,
+        )
+        ax.set_xlabel("Distance / km")
+
     secax.set_xticks(
-        path.distance[path.waypoint_indices],
+        wpx,
         path.waypoint_labels.values,
         rotation="vertical",
     )
-    for point in path.distance[path.waypoint_indices]:
-        ax.axvline(point, color="k", lw=1)
-    ax.plot(path.distance, path.fl, color="C1", lw=2)
-    ax.set_title("Profile")
+
+    ax.set_yticks([200, 350, 410, 450])
+    ax.set_ylabel("Flight Level / hft")
+
+    ax.plot(x, path.fl, color=color, lw=lw, **kwargs)
 
 
 def path_preview(
