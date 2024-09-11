@@ -485,6 +485,45 @@ class IntoCircle:
             return False
         return (self.enter + 180) % 360 - 180 > 0
 
+    def get_intersect(self, other: IntoCircle):
+        fwd, _, distance = geod.inv(
+            self.center.lon, self.center.lat, other.center.lon, other.center.lat
+        )
+        if distance > self.radius + other.radius:
+            raise ValueError(
+                "The two circles are too far apart. There is no intersection"
+            )
+        else:
+
+            def cost(fwd_az):
+                fwd_az = (fwd_az + 180) % 360 - 180
+                cand_lon, cand_lat, _ = geod.fwd(
+                    self.center.lon, self.center.lat, fwd_az, self.radius
+                )
+                _, _, dist = geod.inv(
+                    cand_lon, cand_lat, other.center.lon, other.center.lat
+                )
+                return (dist - other.radius) ** 2
+
+            def min_angle(x0):
+                res = minimize(cost, x0, bounds=[(-180, 180)])
+                if not res.success:
+                    raise ValueError("could not find intersection point")
+                return res
+
+            def get_latlon(res):
+                lon, lat, _ = geod.fwd(
+                    self.center.lon,
+                    self.center.lat,
+                    (res.x + 180) % 360 - 180,
+                    self.radius,
+                )
+                return LatLon(lon=lon, lat=lat)
+
+        res1 = min_angle(fwd)
+        res2 = min_angle(-res1.x)
+        return (get_latlon(res1), get_latlon(res2))
+
     def __call__(self, start: LatLon, include_start: bool = False):
         if self.enter is None:
             (_, start_angle, _) = geod.inv(
