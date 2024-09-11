@@ -497,17 +497,16 @@ class IntoCircle:
 
             def cost(fwd_az):
                 fwd_az = (fwd_az + 180) % 360 - 180
-                # print(fwd_az)
-                fwd_res = (
-                    geod.fwd(self.center.lon, self.center.lat, fwd_az, self.radius),
+                cand_lon, cand_lat, _ = geod.fwd(
+                    self.center.lon, self.center.lat, fwd_az, self.radius
                 )
                 _, _, dist = geod.inv(
-                    fwd_res[0][0], fwd_res[0][1], other.center.lon, other.center.lat
+                    cand_lon, cand_lat, other.center.lon, other.center.lat
                 )
-                return np.abs(dist - other.radius)
+                return (dist - other.radius) ** 2
 
             def min_angle(x0):
-                res = minimize(cost, x0, bounds=[(-180, 180)], method="SLSQP")
+                res = minimize(cost, x0, bounds=[(-180, 180)])
                 if not res.success:
                     raise ValueError("could not find intersection point")
                 return res
