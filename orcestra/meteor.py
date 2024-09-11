@@ -1,7 +1,6 @@
 import getpass
 import json
 import pathlib
-from datetime import datetime
 from io import BytesIO
 
 import numpy as np
@@ -78,8 +77,10 @@ def get_meteor_track(deduplicate_latlon=False):
         )
     )
 
-    # Properly parse datetimes
-    ds = ds.assign_coords(time=[datetime.fromisoformat(str(t)) for t in ds.time.values])
+    # Trim trailing `Z` because np.dateteim64 doesn't allow timezone aware datetimes
+    ds = ds.assign_coords(
+        time=[np.datetime64(str(t).rstrip("Z")) for t in ds.time.values]
+    )
 
     if deduplicate_latlon:
         # Remove duplicate lat/lon information
