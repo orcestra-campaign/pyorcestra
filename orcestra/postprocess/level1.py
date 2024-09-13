@@ -43,7 +43,9 @@ def radar(ds):
 
 
 def _fix_radiometer_time(ds):
-    """Replace duplicates in time coordinate of radiometer datasets with correct time"""
+    """Replace duplicates in time coordinate of radiometer datasets with correct time and ensure 4Hz frequency."""
+
+    # replace duplicate values
     time_broken = ds.time.values
     first_occurence = time_broken[0]
     n = 0
@@ -57,7 +59,15 @@ def _fix_radiometer_time(ds):
             first_occurence = time_broken[i]
             time_new.append(first_occurence)
 
-    return ds.assign_coords(time=time_new).sortby("time")
+    ds.assign_coords(time=time_new).sortby("time")
+
+    # ensure 4Hz frequency
+    start_time = ds.time.min().values
+    end_time = ds.time.max().values
+    time_new = pd.date_range(start=start_time, end=end_time, freq="0.25s")
+    ds = ds.reindex(time=time_new, fill_value=np.nan)
+
+    return ds
 
 
 def radiometer(ds):
