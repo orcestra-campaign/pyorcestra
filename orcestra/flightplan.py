@@ -410,12 +410,116 @@ def expand_path(
 
     if performance := get_flight_performance(aircraft=aircraft):
         ds = ds.pipe(attach_flight_performance, performance)
-
     points_with_time = [(i, p) for i, p in enumerate(path) if p.time is not None]
+
     if len(points_with_time) > 1:
-        raise ValueError(
-            "Multiple waypoints have an associated time. Currently, only a single point with an associated time is implemented!"
+        i, point = points_with_time[0]
+        if point.time.tzinfo is None or point.time.tzinfo.utcoffset(point.time) is None:
+            warn(
+                f"Time {point.time} of {point} is naive (i.e. NOT timezone aware!). Assuming UTC."
+            )
+            reftime = np.datetime64(point.time)
+        else:
+            reftime = np.datetime64(
+                point.time.astimezone(datetime.timezone.utc).replace(tzinfo=None)
+            )
+        if "duration" in ds:
+            offset = ds.duration.values[simple_path_indices[i]]
+            new_time = ds.duration.values - offset + reftime
+            new_speed = ds.speed.values
+            new_dur = ds.duration.values
+        for next_i, next_point in points_with_time[1:]:
+            if (
+                next_point.time.tzinfo is None
+                or next_point.time.tzinfo.utcoffset(next_point.time) is None
+            ):
+                warn(
+                    f"Time {next_point.time} of {next_point} is naive (i.e. NOT timezone aware!). Assuming UTC."
+                )
+                new_ref = np.datetime64(next_point.time)
+            else:
+                new_ref = np.datetime64(
+                    next_point.time.astimezone(datetime.timezone.utc).replace(
+                        tzinfo=None
+                    )
+                )
+            if new_ref < reftime:
+                raise ValueError(
+                    f"You are trying to go back in time. Time of point {i} is earlier than time of point {i-1}"
+                )
+
+            ds_curr = ds.isel(
+                distance=slice(simple_path_indices[i], simple_path_indices[next_i])
+            )
+
+            ds_curr = ds_curr.assign(
+                dist_to_last=ds_curr.distance.diff(dim="distance"),
+            )
+            norm_time = ds_curr.dist_to_last / ds_curr.speed
+            dur_to_last = (
+                ((norm_time / norm_time.sum()) * (new_ref - reftime))
+                .fillna(0)
+                .astype("timedelta64[ns]")
+            )
+            assert np.abs(dur_to_last.sum() - (new_ref - reftime)) < np.timedelta64(
+                1, "s"
+            )
+            ds_curr = ds_curr.assign(
+                dur_to_last=(norm_time / norm_time.sum() * (new_ref - reftime))
+                .fillna(0)
+                .astype("timedelta64[ns]")
+            )
+            ds_curr = ds_curr.assign(
+                new_speed=ds_curr.dist_to_last
+                / (ds_curr.dur_to_last / np.timedelta64(1, "s"))
+            )
+            if np.any(ds_curr.new_speed < 0.9 * ds_curr.speed):
+                raise ValueError(
+                    "The calculated speed is more than 10% slower than the ref. Please adjust the plan."
+                )
+            if np.any(ds_curr.new_speed > 1.1 * ds_curr.speed):
+                raise ValueError(
+                    "The calculated speed is more than 10% faster than the ref. Please adjust the plan."
+                )
+            assert (
+                reftime
+                + ds_curr.dur_to_last.cumsum(dim="distance").values[-1]
+                - new_ref
+            ) < np.timedelta64(1, "s")
+            new_time[simple_path_indices[i] + 1 : simple_path_indices[next_i] + 1] = (
+                reftime + ds_curr.dur_to_last.cumsum(dim="distance").values
+            )
+            new_speed[simple_path_indices[i] + 1 : simple_path_indices[next_i] + 1] = (
+                ds_curr.new_speed.values
+            )
+            new_dur[simple_path_indices[i] + 1 : simple_path_indices[next_i] + 1] = (
+                offset + ds_curr.dur_to_last.cumsum(dim="distance").values
+            )
+
+            reftime = new_ref
+            offset = new_dur[simple_path_indices[next_i]]
+            i = next_i
+            assert (new_time[simple_path_indices[next_i]] - new_ref) < np.timedelta64(
+                1, "s"
+            )
+
+        new_speed[simple_path_indices[next_i] + 1 :] = ds.speed.values[
+            simple_path_indices[next_i] + 1 :
+        ]
+        new_dur[simple_path_indices[next_i] + 1 :] = (
+            ds.duration.values[simple_path_indices[next_i] + 1 :]
+            - ds.duration.values[simple_path_indices[next_i]]
         )
+        new_time[simple_path_indices[next_i] + 1 :] = (
+            reftime + new_dur[simple_path_indices[next_i] + 1 :]
+        )
+
+        ds = ds.assign(
+            time=("distance", new_time),
+            duration=("distance", new_dur),
+            speed=("distance", new_speed),
+        )
+
     elif len(points_with_time) == 1:
         i, point = points_with_time[0]
         if point.time.tzinfo is None or point.time.tzinfo.utcoffset(point.time) is None:
