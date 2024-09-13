@@ -49,15 +49,13 @@ def _state_filter_radar(ds):
     return ds.where(ds.grst == config["valid_radar_state"])
 
 
-def _roll_filter(ds, roll):
+def _roll_filter(ds):
     """Filter any dataset by plane roll angle.
 
     Parameters
     ----------
     ds : xr.Dataset
-        Level0 dataset.
-    roll: xr.DataArray
-        Flight roll angle in degrees.
+        Level1 dataset.
 
     Returns
     -------
@@ -65,22 +63,16 @@ def _roll_filter(ds, roll):
         Dataset filtered by plane roll angle.
     """
 
-    roll_subsampled = roll.sel(time=ds.time, method="nearest").assign_coords(
-        time=ds.time
-    )
-
-    return ds.where(np.abs(roll_subsampled) < config["roll_threshold"])
+    return ds.where(np.abs(ds.plane_roll) < config["roll_threshold"])
 
 
-def _altitude_filter(ds, height):
+def _altitude_filter(ds):
     """Filter any dataset by plane altitude.
 
     Parameters
     ----------
     ds : xr.Dataset
-        Level0 dataset.
-    height: xr.DataArray
-        Flight altitude in m.
+        Level1 dataset.
 
     Returns
     -------
@@ -88,11 +80,7 @@ def _altitude_filter(ds, height):
         Dataset filtered by plane altitude.
     """
 
-    height_subsampled = height.sel(time=ds.time, method="nearest").assign_coords(
-        time=ds.time
-    )
-
-    return ds.where(height_subsampled > config["altitude_threshold"])
+    return ds.where(ds.plane_altitude > config["altitude_threshold"])
 
 
 def _trim_dataset(ds, dim="time"):
@@ -149,7 +137,7 @@ def _filter_spikes(ds, threshold=5, window=1200):
     return xr.where(abs(diff) < threshold, ds, interpolated)
 
 
-def _filter_land(ds, sea_land_mask, lat, lon, offset=pd.Timedelta("7s")):
+def _filter_land(ds, sea_land_mask, offset=pd.Timedelta("7s")):
     """Filters out data that was collected over land.
 
     Removes data by offset earlier than the the time the plane flies over land
@@ -161,10 +149,6 @@ def _filter_land(ds, sea_land_mask, lat, lon, offset=pd.Timedelta("7s")):
         Dataset to filter.
     sea_land_mask : xr.DataArray
         Mask of land and sea. 1 for sea, 0 for land.
-    lat : xr.DataArray
-        Latitudes of the path.
-    lon : xr.DataArray
-        Longitudes of the path.
     offset : pd.Timedelta
         Time offset to remove data before the plane flies over land. Default is 7 seconds.
 
@@ -174,27 +158,24 @@ def _filter_land(ds, sea_land_mask, lat, lon, offset=pd.Timedelta("7s")):
         Filtered dataset.
     """
 
-    mask_path = sea_land_mask.sel(lat=lat, lon=lon, method="nearest")
-    mask_path_subsampled = mask_path.sel(time=ds.time, method="nearest").assign_coords(
-        time=ds.time
-    )
-    diff = (mask_path_subsampled * 1).diff("time")
+    mask_path = sea_land_mask.sel(lat=ds.lat, lon=ds.lon, method="nearest")
+    diff = (mask_path * 1).diff("time")
     start_land = diff.where(diff == -1).dropna("time").time
     end_land = diff.where(diff == 1).dropna("time").time
     for t in start_land:
-        mask_path_subsampled.loc[dict(time=slice(t - offset, t))] = 0
+        mask_path.loc[dict(time=slice(t - offset, t))] = 0
     for t in end_land:
-        mask_path_subsampled.loc[dict(time=slice(t, t + offset))] = 0
-    return ds.where(mask_path_subsampled == 1)
+        mask_path.loc[dict(time=slice(t, t + offset))] = 0
+    return ds.where(mask_path == 1)
 
 
-def filter_radar(ds, roll):
+def filter_radar(ds):
     """Filter radar data for noise, valid radar states, and roll angle.
 
     Parameters
     ----------
     ds : xr.Dataset
-        Level0 radar dataset.
+        Level1 radar dataset.
 
     Returns
     -------
@@ -205,12 +186,12 @@ def filter_radar(ds, roll):
     return (
         ds.pipe(_noise_filter_radar)
         .pipe(_state_filter_radar)
-        .pipe(_roll_filter, roll)
+        .pipe(_roll_filter)
         .pipe(_trim_dataset)
     )
 
 
-def filter_radiometer(ds, height, roll, lat, lon, mask):
+def filter_radiometer(ds, mask):
     """Filter radiometer data for height and roll angle.
 
     Parameters
@@ -235,43 +216,20 @@ def filter_radiometer(ds, height, roll, lat, lon, mask):
     """
 
     return (
-        ds.pipe(_altitude_filter, height)
-        .pipe(_roll_filter, roll)
+        ds.pipe(_altitude_filter)
+        .pipe(_roll_filter)
         .pipe(_trim_dataset)
-        .pipe(_filter_land, mask, lat, lon)
+        .pipe(_filter_land, mask)
     )
 
 
-def filter_iwv(ds):
-    """Filter IWV data for spikes.
-
-    Parameters
-    ----------
-    ds : xr.Dataset
-        Level0 IWV dataset.
-
-    Returns
-    -------
-    xr.Dataset
-        IWV data filtered for spikes.
-    """
-
-    return ds.pipe(_filter_spikes)
-
-
-def correct_radar_height(ds, roll, pitch, altitude):
+def correct_radar_height(ds):
     """Correct radar range gates with HALO flight altitude to height above WGS84 ellipsoid.
 
     Parameters
     ----------
     ds : xr.Dataset
-        Level0 radar dataset.
-    roll : xr.DataArray
-        Flight roll angle in degrees.
-    pitch : xr.DataArray
-        Flight pitch angle in degrees.
-    altitude : xr.DataArray
-        Flight altitude in m.
+        Level1 radar dataset.
 
     Returns
     -------
@@ -279,20 +237,12 @@ def correct_radar_height(ds, roll, pitch, altitude):
         Radar data corrected to height above WGS84 ellipsoid.
 
     """
-    z_grid = np.arange(0, altitude.max() + 30, 30)
-    altitude_subsampled = altitude.sel(time=ds.time, method="nearest").assign_coords(
-        time=ds.time
-    )
-    roll_subsampled = roll.sel(time=ds.time, method="nearest").assign_coords(
-        time=ds.time
-    )
-    pitch_subsampled = pitch.sel(time=ds.time, method="nearest").assign_coords(
-        time=ds.time
-    )
+    z_grid = np.arange(0, ds.plane_altitude.max() + 30, 30)
+
     flight_los = (
-        altitude_subsampled
-        / np.cos(np.radians(pitch_subsampled))
-        / np.cos(np.radians(roll_subsampled))
+        ds.plane_altitude
+        / np.cos(np.radians(ds.plane_pitch))
+        / np.cos(np.radians(ds.plane_roll))
     )
 
     ds_z_grid = xr.DataArray(
@@ -304,10 +254,9 @@ def correct_radar_height(ds, roll, pitch, altitude):
         coords={"time": ds.time, "height": z_grid},
         dims=("time", "height"),
         data=ds_z_grid
-        / np.cos(np.radians(pitch_subsampled))
-        / np.cos(np.radians(roll_subsampled)),
+        / np.cos(np.radians(ds.plane_pitch))
+        / np.cos(np.radians(ds.plane_roll)),
     )
 
-    return ds.sel(range=flight_los - ds_range, method="nearest").where(
-        ds_z_grid < altitude_subsampled
-    )
+    ds = ds.sel(range=flight_los - ds_range, method="nearest").drop_vars("range")
+    return ds.where(ds_z_grid < ds.plane_altitude)
