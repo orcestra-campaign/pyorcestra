@@ -33,15 +33,6 @@ def _radar_ql_add_dBZ(ds):
     )
 
 
-def radar(ds):
-    """Post-processing of Radar quick look datasets."""
-    return ds.pipe(
-        _radar_ql_fix_time,
-    ).pipe(
-        _radar_ql_add_dBZ,
-    )
-
-
 def _fix_radiometer_time(ds):
     """Replace duplicates in time coordinate of radiometer datasets with correct time and ensure 4Hz frequency."""
 
@@ -59,18 +50,39 @@ def _fix_radiometer_time(ds):
             first_occurence = time_broken[i]
             time_new.append(first_occurence)
 
-    ds.assign_coords(time=time_new).sortby("time")
+    ds = ds.assign_coords(time=time_new).sortby("time")
 
     # ensure 4Hz frequency
     start_time = ds.time.min().values
     end_time = ds.time.max().values
-    time_new = pd.date_range(start=start_time, end=end_time, freq="0.25s")
-    ds = ds.reindex(time=time_new, fill_value=np.nan)
+    time_expected = pd.date_range(start=start_time, end=end_time, freq="0.25s")
+    ds = ds.reindex(time=time_expected, fill_value=np.nan)
 
     return ds
 
 
-def radiometer(ds):
+def _add_georeference(ds, ds_bahamas):
+    """Add georeference information to dataset."""
+    return ds.assign(
+        altitude=ds_bahamas.IRS_ALT.sel(time=ds.time, method="nearest").assign_coords(
+            time=ds.time
+        ),
+        lat=ds_bahamas.IRS_LAT.sel(time=ds.time, method="nearest").assign_coords(
+            time=ds.time
+        ),
+        lon=ds_bahamas.IRS_LON.sel(time=ds.time, method="nearest").assign_coords(
+            time=ds.time
+        ),
+        roll=ds_bahamas.IRS_PHI.sel(time=ds.time, method="nearest").assign_coords(
+            time=ds.time
+        ),
+        pitch=ds_bahamas.IRS_THE.sel(time=ds.time, method="nearest").assign_coords(
+            time=ds.time
+        ),
+    )
+
+
+def radiometer(ds, ds_bahamas):
     """Post-processing of radiometer datasets."""
     return (
         ds.rename(number_frequencies="frequency")
@@ -78,11 +90,31 @@ def radiometer(ds):
         .pipe(
             _fix_radiometer_time,
         )
+        .pipe(
+            _add_georeference,
+            ds_bahamas,
+        )
     )
 
 
-def iwv(ds):
+def iwv(ds, ds_bahamas):
     """Post-processing of IWV datasets."""
     return ds.pipe(
         _fix_radiometer_time,
+    ).pipe(_add_georeference, ds_bahamas)
+
+
+def radar(ds, ds_bahamas):
+    """Post-processing of Radar quick look datasets."""
+    return (
+        ds.pipe(
+            _radar_ql_fix_time,
+        )
+        .pipe(
+            _radar_ql_add_dBZ,
+        )
+        .pipe(
+            _add_georeference,
+            ds_bahamas,
+        )
     )
