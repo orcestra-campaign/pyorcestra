@@ -7,13 +7,6 @@ def _bahamas_fix_time(ds):
     return ds.rename({"tid": "time", "TIME": "time"}).set_index(time="time")
 
 
-def bahamas(ds):
-    """Post-processing of BAHAMAS datasets."""
-    return ds.pipe(
-        _bahamas_fix_time,
-    )
-
-
 def _radar_fix_time(ds):
     """Fix time coordinate of RADAR moments datasets."""
     datetime = (
@@ -91,6 +84,13 @@ def _add_georeference(ds, ds_bahamas):
         plane_pitch=ds_bahamas.IRS_THE.sel(
             time=ds.time, method="nearest"
         ).assign_coords(time=ds.time),
+    )
+
+
+def fix_bahamas(ds):
+    """Post-processing of BAHAMAS datasets."""
+    return ds.pipe(
+        _bahamas_fix_time,
     )
 
 
