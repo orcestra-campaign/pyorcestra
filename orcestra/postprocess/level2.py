@@ -112,31 +112,6 @@ def _trim_dataset(ds, dim="time"):
     return trimmed_ds
 
 
-def _filter_spikes(ds, threshold=5, window=1200):
-    """
-    Filters out spikes in a time series by comparing the difference between each point
-    and the minimum of the surrounding 5 minutes.
-
-    Parameters
-    ----------
-    ds : xr.DataArray
-        DataArray to filter.
-    threshold : float
-        Maximum allowed difference between the data and the minimum within the window.
-    window : int
-        Size of the window in seconds to compare the data, default is 5 minutes.
-
-    Returns
-    -------
-    xr.DataArray
-        Filtered DataArray.
-    """
-    diff = ds - ds.rolling(time=window, center=True, min_periods=1).min()
-    filtered = ds.where(abs(diff) < threshold)
-    interpolated = filtered.interpolate_na("time", method="linear")
-    return xr.where(abs(diff) < threshold, ds, interpolated)
-
-
 def _filter_land(ds, sea_land_mask, offset=pd.Timedelta("7s")):
     """Filters out data that was collected over land.
 
@@ -191,7 +166,7 @@ def filter_radar(ds):
     )
 
 
-def filter_radiometer(ds, mask):
+def filter_radiometer(ds, sea_land_mask):
     """Filter radiometer data for height and roll angle.
 
     Parameters
@@ -206,7 +181,7 @@ def filter_radiometer(ds, mask):
         Latitudes of the flightpath.
     lon : xr.DataArray
         Longitudes of the flightpath.
-    mask : xr.DataArray
+    sea_land_mask : xr.DataArray
         Mask of land and sea. 1 for sea, 0 for land.
 
     Returns
@@ -219,8 +194,33 @@ def filter_radiometer(ds, mask):
         ds.pipe(_altitude_filter)
         .pipe(_roll_filter)
         .pipe(_trim_dataset)
-        .pipe(_filter_land, mask)
+        .pipe(_filter_land, sea_land_mask)
     )
+
+
+def filter_spikes(ds, threshold=5, window=1200):
+    """
+    Filters out spikes in a time series by comparing the difference between each point
+    and the minimum of the surrounding 5 minutes.
+
+    Parameters
+    ----------
+    ds : xr.DataArray
+        DataArray to filter.
+    threshold : float
+        Maximum allowed difference between the data and the minimum within the window.
+    window : int
+        Size of the window in seconds to compare the data, default is 5 minutes.
+
+    Returns
+    -------
+    xr.DataArray
+        Filtered DataArray.
+    """
+    diff = ds - ds.rolling(time=window, center=True, min_periods=1).min()
+    filtered = ds.where(abs(diff) < threshold)
+    interpolated = filtered.interpolate_na("time", method="linear")
+    return xr.where(abs(diff) < threshold, ds, interpolated)
 
 
 def correct_radar_height(ds):
@@ -259,4 +259,11 @@ def correct_radar_height(ds):
     )
 
     ds = ds.sel(range=flight_los - ds_range, method="nearest").drop_vars("range")
-    return ds.where(ds_z_grid < ds.plane_altitude)
+    ds = ds.assign(
+        {
+            var: ds[var].where(ds_z_grid < ds.plane_altitude)
+            for var in ds
+            if ds[var].dims == ("time", "height")
+        }
+    )
+    return ds
