@@ -14,8 +14,8 @@ def bahamas(ds):
     )
 
 
-def _radar_ql_fix_time(ds):
-    """Fix time coordinate of RADAR QL datasets."""
+def _radar_fix_time(ds):
+    """Fix time coordinate of RADAR moments datasets."""
     datetime = (
         np.datetime64("1970-01-01", "ns")
         + ds.time.values * np.timedelta64(1, "s")
@@ -25,12 +25,24 @@ def _radar_ql_fix_time(ds):
     return ds.assign(time=datetime).drop_vars("microsec")
 
 
-def _radar_ql_add_dBZ(ds):
+def _radar_add_dBZ(ds):
     """Add reflectivity in dB."""
-    return ds.assign(
+    ds = ds.assign(
         dBZg=lambda dx: 10 * np.log10(dx.Zg),
         dBZe=lambda dx: 10 * np.log10(dx.Ze),
     )
+    ds.dBZg.attrs = {
+        "units": "dBZg",
+        "long_name": "Decadal logarithm of equivalent radar reflectivity of all targets (Zg)",
+    }
+    ds.dBZe.attrs = (
+        {
+            "units": "dBZe",
+            "long_name": "Decadal logarithm of equivalent radar reflectivity of hydrometeors (Ze)",
+        },
+    )
+
+    return ds
 
 
 def _fix_radiometer_time(ds):
@@ -64,25 +76,25 @@ def _fix_radiometer_time(ds):
 def _add_georeference(ds, ds_bahamas):
     """Add georeference information to dataset."""
     return ds.assign(
-        altitude=ds_bahamas.IRS_ALT.sel(time=ds.time, method="nearest").assign_coords(
-            time=ds.time
-        ),
+        plane_altitude=ds_bahamas.IRS_ALT.sel(
+            time=ds.time, method="nearest"
+        ).assign_coords(time=ds.time),
         lat=ds_bahamas.IRS_LAT.sel(time=ds.time, method="nearest").assign_coords(
             time=ds.time
         ),
         lon=ds_bahamas.IRS_LON.sel(time=ds.time, method="nearest").assign_coords(
             time=ds.time
         ),
-        roll=ds_bahamas.IRS_PHI.sel(time=ds.time, method="nearest").assign_coords(
+        plane_roll=ds_bahamas.IRS_PHI.sel(time=ds.time, method="nearest").assign_coords(
             time=ds.time
         ),
-        pitch=ds_bahamas.IRS_THE.sel(time=ds.time, method="nearest").assign_coords(
-            time=ds.time
-        ),
+        plane_pitch=ds_bahamas.IRS_THE.sel(
+            time=ds.time, method="nearest"
+        ).assign_coords(time=ds.time),
     )
 
 
-def radiometer(ds, ds_bahamas):
+def fix_radiometer(ds, ds_bahamas):
     """Post-processing of radiometer datasets."""
     return (
         ds.rename(number_frequencies="frequency")
@@ -97,21 +109,21 @@ def radiometer(ds, ds_bahamas):
     )
 
 
-def iwv(ds, ds_bahamas):
+def fix_iwv(ds, ds_bahamas):
     """Post-processing of IWV datasets."""
     return ds.pipe(
         _fix_radiometer_time,
     ).pipe(_add_georeference, ds_bahamas)
 
 
-def radar(ds, ds_bahamas):
+def fix_radar(ds, ds_bahamas):
     """Post-processing of Radar quick look datasets."""
     return (
         ds.pipe(
-            _radar_ql_fix_time,
+            _radar_fix_time,
         )
         .pipe(
-            _radar_ql_add_dBZ,
+            _radar_add_dBZ,
         )
         .pipe(
             _add_georeference,
