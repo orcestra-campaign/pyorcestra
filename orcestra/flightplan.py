@@ -7,12 +7,15 @@ from functools import cached_property
 from typing import Optional, List, Dict
 from warnings import warn
 import datetime
+import json
 
+import cartopy.crs as ccrs
 import numpy as np
 import pyproj
 import scipy.signal
 import xarray as xr
 import pandas as pd
+import topojson
 from scipy.optimize import minimize
 from xarray.backends import BackendEntrypoint
 
@@ -735,6 +738,27 @@ def plot_cwv(var, ax=None, levels=None):
         ax=ax,
     )
     plt.clabel(contour_lines, inline=True, fontsize=8, colors="grey", fmt="%d")
+
+
+def plot_fir(ax=None, color="#F08080", linestyle=(0, (2, 6)), linewidth=0.8, **kwargs):
+    with open(pathlib.Path(__file__).parent / "data" / "worldfirs.json", "r") as fp:
+        data = json.load(fp)
+
+    topo = topojson.Topology(data, object_name="data")
+    firs = topo.to_gdf()
+
+    for i, row in firs.iterrows():
+        for geom in getattr(row.geometry.boundary, "geoms", [row.geometry.boundary]):
+            lon, lat = zip(*list(geom.coords))
+            ax.plot(
+                lon,
+                lat,
+                transform=ccrs.PlateCarree(),
+                color=color,
+                linestyle=linestyle,
+                linewidth=linewidth,
+                **kwargs,
+            )
 
 
 def vertical_preview(path, color="C1", lw=2, **kwargs):
