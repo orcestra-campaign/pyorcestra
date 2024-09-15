@@ -55,7 +55,7 @@ def _fix_radiometer_time(ds):
             first_occurence = time_broken[i]
             time_new.append(first_occurence)
 
-    ds = ds.assign_coords(time=time_new).sortby("time")
+    ds = ds.assign_coords(time=time_new).sortby("time").drop_duplicates("time")
 
     # ensure 4Hz frequency
     start_time = ds.time.min().values
