@@ -15,6 +15,33 @@ with open(config_path) as f:
     config = json.load(f)
 
 
+def _selective_where(ds, condition):
+    """
+    Apply where to dataset but do not touch georeference data which should not be masked
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+        The input dataset.
+    condition : xr.DataArray, np.array, or boolean
+        The condition to apply to the dataset.
+
+    Returns
+    -------
+    xr.Dataset
+        The dataset with the condition applied.
+    """
+
+    ds = ds.assign(
+        {
+            var: ds[var].where(condition)
+            for var in ds.data_vars
+            if var not in config["plane_variables"]
+        }
+    )
+    return ds
+
+
 def _noise_filter_radar(ds):
     """Filter radar data by noise level.
 
@@ -29,7 +56,7 @@ def _noise_filter_radar(ds):
         Radar data filtered by noise level.
 
     """
-    return ds.where(ds.npw1 > config["noise_threshold"])
+    return ds.pipe(_selective_where, (ds.npw1 > config["noise_threshold"]))
 
 
 def _state_filter_radar(ds):
@@ -46,7 +73,7 @@ def _state_filter_radar(ds):
         Radar data filtered for valid state.
     """
 
-    return ds.where(ds.grst == config["valid_radar_state"])
+    return ds.pipe(_selective_where, (ds.grst == config["valid_radar_state"]))
 
 
 def _roll_filter(ds):
@@ -63,7 +90,7 @@ def _roll_filter(ds):
         Dataset filtered by plane roll angle.
     """
 
-    return ds.where(np.abs(ds.plane_roll) < config["roll_threshold"])
+    return ds.pipe(_selective_where, (np.abs(ds.plane_roll) < config["roll_threshold"]))
 
 
 def _altitude_filter(ds):
@@ -80,7 +107,7 @@ def _altitude_filter(ds):
         Dataset filtered by plane altitude.
     """
 
-    return ds.where(ds.plane_altitude > config["altitude_threshold"])
+    return ds.pipe(_selective_where, (ds.plane_altitude > config["altitude_threshold"]))
 
 
 def _trim_dataset(ds, dim="time"):
@@ -141,7 +168,7 @@ def _filter_land(ds, sea_land_mask, offset=pd.Timedelta("7s")):
         mask_path.loc[dict(time=slice(t - offset, t))] = 0
     for t in end_land:
         mask_path.loc[dict(time=slice(t, t + offset))] = 0
-    return ds.where(mask_path == 1)
+    return ds.pipe(_selective_where, (mask_path == 1).drop(["lat", "lon"]))
 
 
 def filter_radar(ds):

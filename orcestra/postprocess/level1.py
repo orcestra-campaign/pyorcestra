@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import xarray as xr
 
 
 def _bahamas_fix_time(ds):
@@ -102,10 +103,6 @@ def fix_radiometer(ds, ds_bahamas):
         .pipe(
             _fix_radiometer_time,
         )
-        .pipe(
-            _add_georeference,
-            ds_bahamas,
-        )
     )
 
 
@@ -130,3 +127,24 @@ def fix_radar(ds, ds_bahamas):
             ds_bahamas,
         )
     )
+
+
+def concatenate_radiometers(ds_list, ds_bahamas):
+    """
+    Concatenate radiometer datasets and add georeference information.
+
+    Parameters
+    ----------
+    ds_list : list of xr.Dataset
+        List of radiometer datasets.
+    ds_bahamas : xr.Dataset
+        BAHAMAS dataset.
+
+    Returns
+    -------
+    xr.Dataset
+        Concatenated radiometer dataset with georeference information.
+    """
+
+    ds = xr.concat(ds_list, dim="frequency").pipe(_add_georeference, ds_bahamas)
+    return ds
