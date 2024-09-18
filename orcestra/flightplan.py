@@ -745,6 +745,10 @@ def plot_cwv(var, ax=None, levels=None):
 
 def plot_fir(ax=None, color="#F08080", linestyle=(0, (2, 6)), linewidth=0.8, **kwargs):
     import cartopy.crs as ccrs
+    import matplotlib.pylab as plt
+
+    if ax is None:
+        ax = plt.gca()
 
     with open(pathlib.Path(__file__).parent / "data" / "worldfirs.json", "r") as fp:
         data = json.load(fp)
