@@ -752,10 +752,11 @@ def plot_fir(ax=None, color="#F08080", linestyle=(0, (2, 6)), linewidth=0.8, **k
     topo = topojson.Topology(data, object_name="data")
     firs = topo.to_gdf()
 
+    lines = []
     for i, row in firs.iterrows():
         for geom in getattr(row.geometry.boundary, "geoms", [row.geometry.boundary]):
             lon, lat = zip(*list(geom.coords))
-            ax.plot(
+            line = ax.plot(
                 lon,
                 lat,
                 transform=ccrs.PlateCarree(),
@@ -764,6 +765,9 @@ def plot_fir(ax=None, color="#F08080", linestyle=(0, (2, 6)), linewidth=0.8, **k
                 linewidth=linewidth,
                 **kwargs,
             )
+            lines.append(line)
+
+    return lines
 
 
 def vertical_preview(path, color="C1", lw=2, **kwargs):
