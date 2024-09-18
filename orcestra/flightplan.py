@@ -130,6 +130,10 @@ class LatLon:
         dlon, mlon = split_deg(self.lon, 6000)
         return f"{SN(self.lat)}{dlat:02.0f} {mlat:05.2f}, {WE(self.lon)}{dlon:03.0f} {mlon:05.2f}"
 
+    def get_distance(self, other: LatLon) -> float:
+        dist = geod.inv(self.lon, self.lat, other.lon, other.lat)[2]
+        return dist
+
     assign = dataclasses.replace
 
 
