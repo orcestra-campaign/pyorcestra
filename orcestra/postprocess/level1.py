@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-import xarray as xr
 
 
 def _bahamas_fix_time(ds):
@@ -67,25 +66,23 @@ def _fix_radiometer_time(ds):
     return ds
 
 
-def _add_georeference(ds, ds_bahamas):
+def add_georeference(ds, lat, lon, plane_pitch, plane_roll, plane_altitude, source):
     """Add georeference information to dataset."""
-    return ds.assign(
-        plane_altitude=ds_bahamas.IRS_ALT.sel(
-            time=ds.time, method="nearest"
-        ).assign_coords(time=ds.time),
-        lat=ds_bahamas.IRS_LAT.sel(time=ds.time, method="nearest").assign_coords(
+    ds = ds.assign(
+        plane_altitude=plane_altitude.sel(time=ds.time, method="nearest").assign_coords(
             time=ds.time
         ),
-        lon=ds_bahamas.IRS_LON.sel(time=ds.time, method="nearest").assign_coords(
+        lat=lat.sel(time=ds.time, method="nearest").assign_coords(time=ds.time),
+        lon=lon.sel(time=ds.time, method="nearest").assign_coords(time=ds.time),
+        plane_roll=plane_roll.sel(time=ds.time, method="nearest").assign_coords(
             time=ds.time
         ),
-        plane_roll=ds_bahamas.IRS_PHI.sel(time=ds.time, method="nearest").assign_coords(
+        plane_pitch=plane_pitch.sel(time=ds.time, method="nearest").assign_coords(
             time=ds.time
         ),
-        plane_pitch=ds_bahamas.IRS_THE.sel(
-            time=ds.time, method="nearest"
-        ).assign_coords(time=ds.time),
     )
+    ds.attrs["georeference source"] = source
+    return ds
 
 
 def fix_bahamas(ds):
@@ -95,7 +92,7 @@ def fix_bahamas(ds):
     )
 
 
-def fix_radiometer(ds, ds_bahamas):
+def fix_radiometer(ds):
     """Post-processing of radiometer datasets."""
     return (
         ds.rename(number_frequencies="frequency")
@@ -106,45 +103,15 @@ def fix_radiometer(ds, ds_bahamas):
     )
 
 
-def fix_iwv(ds, ds_bahamas):
+def fix_iwv(ds):
     """Post-processing of IWV datasets."""
-    return ds.pipe(
-        _fix_radiometer_time,
-    ).pipe(_add_georeference, ds_bahamas)
+    return ds.pipe(_fix_radiometer_time)
 
 
-def fix_radar(ds, ds_bahamas):
+def fix_radar(ds):
     """Post-processing of Radar quick look datasets."""
-    return (
-        ds.pipe(
-            _radar_fix_time,
-        )
-        .pipe(
-            _radar_add_dBZ,
-        )
-        .pipe(
-            _add_georeference,
-            ds_bahamas,
-        )
+    return ds.pipe(
+        _radar_fix_time,
+    ).pipe(
+        _radar_add_dBZ,
     )
-
-
-def concatenate_radiometers(ds_list, ds_bahamas):
-    """
-    Concatenate radiometer datasets and add georeference information.
-
-    Parameters
-    ----------
-    ds_list : list of xr.Dataset
-        List of radiometer datasets.
-    ds_bahamas : xr.Dataset
-        BAHAMAS dataset.
-
-    Returns
-    -------
-    xr.Dataset
-        Concatenated radiometer dataset with georeference information.
-    """
-
-    ds = xr.concat(ds_list, dim="frequency").pipe(_add_georeference, ds_bahamas)
-    return ds
