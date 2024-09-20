@@ -240,7 +240,7 @@ def goes_snapshot(time: str, layer_type: str, folder_path: str = None):
 
     url = f"https://wvs.earthdata.nasa.gov/api/v1/snapshot?REQUEST=GetSnapshot&TIME={time}&BBOX={bbox}&CRS=EPSG:4326&LAYERS={layer},Coastlines_15m&WRAP=x,x&FORMAT=image/jpeg&WIDTH=876&HEIGHT=652&ts=1725710721315"
 
-    filename = f"{time}_{bbox}_{layer}.jpg"
+    filename = f"{time}_{bbox}_{layer}.jpg".replace(",", "")
 
     if folder_path:
         if not os.path.exists(folder_path):
