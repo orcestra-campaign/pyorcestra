@@ -3,6 +3,7 @@ import fsspec
 import requests
 import re
 import numpy as np
+import os
 import xarray as xr
 import pandas as pd
 from functools import lru_cache
@@ -215,3 +216,41 @@ class SattrackLoader:
         )
         df["lon"] = -df["lon"]  # east positive
         return df.loc[df.lat.notna()].set_index("time").to_xarray()
+
+
+def goes_snapshot(time: str, layer_type: str, folder_path: str = None):
+    """
+    Downloads a GOES snapshot from NASA Worldview and saves it to a file.
+
+    :param time: The timestamp in ISO format (e.g., '2024-09-19T06:00:00Z').
+    :param layer_type: The layer type, 'vis' for visible or 'inf' for infrared.
+    :param folder_path: Optional path to the folder where the file should be saved. If not provided, saves in the current directory.
+    """
+
+    if layer_type == "vis":
+        layer = "GOES-East_ABI_GeoColor"
+    elif layer_type == "inf":
+        layer = "GOES-East_ABI_Band13_Clean_Infrared"
+    else:
+        raise ValueError(
+            "Invalid option for layer. Use 'vis' for visible or 'inf' for infrared."
+        )
+
+    bbox = "5,-60,20,-40"
+
+    url = f"https://wvs.earthdata.nasa.gov/api/v1/snapshot?REQUEST=GetSnapshot&TIME={time}&BBOX={bbox}&CRS=EPSG:4326&LAYERS={layer},Coastlines_15m&WRAP=x,x&FORMAT=image/jpeg&WIDTH=876&HEIGHT=652&ts=1725710721315"
+
+    filename = f"{time}_{bbox}_{layer}.jpg".replace(",", "")
+
+    if folder_path:
+        os.makedirs(folder_path, exist_ok=True)
+        filename = os.path.join(folder_path, filename)
+
+    response = requests.get(url)
+
+    if response.status_code == 200:
+        with open(filename, "wb") as f:
+            f.write(response.content)
+        print(f"Snapshot saved as {filename}")
+    else:
+        print(f"Failed to retrieve snapshot: {response.status_code}, {response.reason}")
