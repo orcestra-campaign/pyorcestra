@@ -423,7 +423,7 @@ def expand_path(
                 point.time.astimezone(datetime.timezone.utc).replace(tzinfo=None)
             )
 
-    if len(points_with_time) > 1:
+    if len(points_with_time) > 0:
         i, point = points_with_time[0]
         reftime = get_reftime_utc(point)
         if "duration" in ds:
@@ -488,19 +488,17 @@ def expand_path(
             reftime = new_ref
             offset = new_dur[simple_path_indices[next_i]]
             i = next_i
-            assert (new_time[simple_path_indices[next_i]] - new_ref) < np.timedelta64(
-                1, "s"
-            )
+            assert (new_time[simple_path_indices[i]] - new_ref) < np.timedelta64(1, "s")
 
-        new_speed[simple_path_indices[next_i] + 1 :] = ds.speed.values[
-            simple_path_indices[next_i] + 1 :
+        new_speed[simple_path_indices[i] + 1 :] = ds.speed.values[
+            simple_path_indices[i] + 1 :
         ]
-        new_dur[simple_path_indices[next_i] + 1 :] = (
-            ds.duration.values[simple_path_indices[next_i] + 1 :]
-            - ds.duration.values[simple_path_indices[next_i]]
+        new_dur[simple_path_indices[i] + 1 :] = (
+            ds.duration.values[simple_path_indices[i] + 1 :]
+            - ds.duration.values[simple_path_indices[i]]
         )
-        new_time[simple_path_indices[next_i] + 1 :] = (
-            reftime + new_dur[simple_path_indices[next_i] + 1 :]
+        new_time[simple_path_indices[i] + 1 :] = (
+            reftime + new_dur[simple_path_indices[i] + 1 :]
         )
 
         ds = ds.assign(
@@ -508,13 +506,6 @@ def expand_path(
             duration=("distance", new_dur),
             speed=("distance", new_speed),
         )
-
-    elif len(points_with_time) == 1:
-        i, point = points_with_time[0]
-        reftime = get_reftime_utc(point)
-        if "duration" in ds:
-            offset = ds.duration.values[simple_path_indices[i]]
-            ds = ds.assign(time=ds.duration - offset + reftime)
 
     return ds
 
