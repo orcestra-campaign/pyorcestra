@@ -412,42 +412,31 @@ def expand_path(
         ds = ds.pipe(attach_flight_performance, performance)
     points_with_time = [(i, p) for i, p in enumerate(path) if p.time is not None]
 
-    if len(points_with_time) > 1:
-        i, point = points_with_time[0]
+    def get_reftime_utc(point):
         if point.time.tzinfo is None or point.time.tzinfo.utcoffset(point.time) is None:
             warn(
                 f"Time {point.time} of {point} is naive (i.e. NOT timezone aware!). Assuming UTC."
             )
-            reftime = np.datetime64(point.time)
+            return np.datetime64(point.time)
         else:
-            reftime = np.datetime64(
+            return np.datetime64(
                 point.time.astimezone(datetime.timezone.utc).replace(tzinfo=None)
             )
+
+    if len(points_with_time) > 1:
+        i, point = points_with_time[0]
+        reftime = get_reftime_utc(point)
         if "duration" in ds:
             offset = ds.duration.values[simple_path_indices[i]]
             new_time = ds.duration.values - offset + reftime
             new_speed = ds.speed.values
             new_dur = ds.duration.values
         for next_i, next_point in points_with_time[1:]:
-            if (
-                next_point.time.tzinfo is None
-                or next_point.time.tzinfo.utcoffset(next_point.time) is None
-            ):
-                warn(
-                    f"Time {next_point.time} of {next_point} is naive (i.e. NOT timezone aware!). Assuming UTC."
-                )
-                new_ref = np.datetime64(next_point.time)
-            else:
-                new_ref = np.datetime64(
-                    next_point.time.astimezone(datetime.timezone.utc).replace(
-                        tzinfo=None
-                    )
-                )
+            new_ref = get_reftime_utc(next_point)
             if new_ref < reftime:
                 raise ValueError(
                     f"You are trying to go back in time. Time of point {i} is earlier than time of point {i-1}"
                 )
-
             ds_curr = ds.isel(
                 distance=slice(simple_path_indices[i], simple_path_indices[next_i])
             )
@@ -522,16 +511,7 @@ def expand_path(
 
     elif len(points_with_time) == 1:
         i, point = points_with_time[0]
-        if point.time.tzinfo is None or point.time.tzinfo.utcoffset(point.time) is None:
-            warn(
-                f"Time {point.time} of {point} is naive (i.e. NOT timezone aware!). Assuming UTC."
-            )
-            reftime = np.datetime64(point.time)
-        else:
-            reftime = np.datetime64(
-                point.time.astimezone(datetime.timezone.utc).replace(tzinfo=None)
-            )
-
+        reftime = get_reftime_utc(point)
         if "duration" in ds:
             offset = ds.duration.values[simple_path_indices[i]]
             ds = ds.assign(time=ds.duration - offset + reftime)
