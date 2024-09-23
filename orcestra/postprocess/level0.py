@@ -85,14 +85,14 @@ def add_georeference(ds, lat, lon, plane_pitch, plane_roll, plane_altitude, sour
     return ds
 
 
-def fix_bahamas(ds):
+def bahamas(ds):
     """Post-processing of BAHAMAS datasets."""
     return ds.pipe(
         _bahamas_fix_time,
     )
 
 
-def fix_radiometer(ds):
+def radiometer(ds):
     """Post-processing of radiometer datasets."""
     return (
         ds.rename(number_frequencies="frequency")
@@ -103,12 +103,12 @@ def fix_radiometer(ds):
     )
 
 
-def fix_iwv(ds):
+def iwv(ds):
     """Post-processing of IWV datasets."""
     return ds.pipe(_fix_radiometer_time)
 
 
-def fix_radar(ds):
+def radar(ds):
     """Post-processing of Radar quick look datasets."""
     return ds.pipe(
         _radar_fix_time,
