@@ -6,8 +6,10 @@ import numpy as np
 import os
 import xarray as xr
 import pandas as pd
+from datetime import datetime, timedelta
 from functools import lru_cache
-from io import StringIO
+from io import StringIO, BytesIO
+from PIL import Image
 
 
 def get_tle(**query):
@@ -218,39 +220,71 @@ class SattrackLoader:
         return df.loc[df.lat.notna()].set_index("time").to_xarray()
 
 
-def goes_snapshot(time: str, layer_type: str, folder_path: str = None):
+@lru_cache
+def request_goes(
+    time: str,
+    layer: str = "GOES-East_ABI_GeoColor",
+    extent: tuple = (-60, -40, 5, 20),
+    retry: bool = True,
+):
+    """
+    Downloads a GOES snapshot from NASA Worldview and saves it to a file.
+
+    :param time: The timestamp in ISO format (e.g., '2024-09-19T06:00:00Z').
+    :param layer: The layer type.
+    :param extent: Extent of the snapshot.
+    :param retry: If the returned image is pitch black, retry at an ealier timestep.
+    """
+    bbox = f"{extent[2]},{extent[0]},{extent[3]},{extent[1]}"
+    url = f"https://wvs.earthdata.nasa.gov/api/v1/snapshot?REQUEST=GetSnapshot&TIME={time}&BBOX={bbox}&CRS=EPSG:4326&LAYERS={layer},Coastlines_15m&WRAP=x,x&FORMAT=image/jpeg&WIDTH=876&HEIGHT=652&ts=1725710721315"
+
+    response = requests.get(url)
+
+    img = Image.open(BytesIO(response.content))
+
+    while (img.entropy() < 2) and retry:
+        time = datetime.fromisoformat(time) - timedelta(minutes=10)
+        img = request_goes(
+            time.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            layer=layer,
+            extent=extent,
+            retry=retry,
+        )
+
+    return img
+
+
+def goes_snapshot(
+    time: str,
+    layer_type: str,
+    extent: tuple = (-60, -40, 5, 20),
+    folder_path: str = None,
+):
     """
     Downloads a GOES snapshot from NASA Worldview and saves it to a file.
 
     :param time: The timestamp in ISO format (e.g., '2024-09-19T06:00:00Z').
     :param layer_type: The layer type, 'vis' for visible or 'inf' for infrared.
+    :param extent: Extent of the snapshot.
     :param folder_path: Optional path to the folder where the file should be saved. If not provided, saves in the current directory.
     """
-
     if layer_type == "vis":
         layer = "GOES-East_ABI_GeoColor"
     elif layer_type == "inf":
         layer = "GOES-East_ABI_Band13_Clean_Infrared"
     else:
         raise ValueError(
-            "Invalid option for layer. Use 'vis' for visible or 'inf' for infrared."
+            "Invalid option for layer type. Use 'vis' for visible or 'inf' for infrared."
         )
 
-    bbox = "5,-60,20,-40"
+    img = request_goes(time=time, layer=layer)
 
-    url = f"https://wvs.earthdata.nasa.gov/api/v1/snapshot?REQUEST=GetSnapshot&TIME={time}&BBOX={bbox}&CRS=EPSG:4326&LAYERS={layer},Coastlines_15m&WRAP=x,x&FORMAT=image/jpeg&WIDTH=876&HEIGHT=652&ts=1725710721315"
-
-    filename = f"{time}_{bbox}_{layer}.jpg".replace(",", "")
+    bbox = f"{extent[2]}_{extent[0]}_{extent[3]}_{extent[1]}"
+    filename = f"{time}_{bbox}_{layer}.jpg".replace(":", "")
 
     if folder_path:
         os.makedirs(folder_path, exist_ok=True)
         filename = os.path.join(folder_path, filename)
 
-    response = requests.get(url)
-
-    if response.status_code == 200:
-        with open(filename, "wb") as f:
-            f.write(response.content)
-        print(f"Snapshot saved as {filename}")
-    else:
-        print(f"Failed to retrieve snapshot: {response.status_code}, {response.reason}")
+    img.save(filename)
+    print(f"Snapshot saved as {filename}")
