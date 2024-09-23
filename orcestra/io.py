@@ -1,10 +1,12 @@
+import fsspec
 import numpy as np
 import xarray as xr
 
 
 def _parse_igi(txtfile, skip_header, delimiter, varinfo, flight_date, gps_time_offset):
     """Parse IGI position data txt file and return as xr.Dataset."""
-    data = np.genfromtxt(txtfile, skip_header=skip_header, delimiter=delimiter)
+    with fsspec.open(txtfile) as fp:
+        data = np.genfromtxt(fp, skip_header=skip_header, delimiter=delimiter)
 
     ds = xr.Dataset(
         data_vars={
