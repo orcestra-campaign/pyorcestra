@@ -941,6 +941,26 @@ def to_kml(path):
     return kml.kml()
 
 
+def to_gpx(path):
+    import gpxpy
+
+    gpx = gpxpy.gpx.GPX()
+
+    gpx_track = gpxpy.gpx.GPXTrack()
+    gpx.tracks.append(gpx_track)
+
+    gpx_segment = gpxpy.gpx.GPXTrackSegment()
+    gpx_track.segments.append(gpx_segment)
+
+    ds = path_as_ds(path)
+    for lat, lon, fl in zip(ds.lat.values, ds.lon.values, ds.fl.values):
+        gpx_segment.points.append(
+            gpxpy.gpx.GPXTrackPoint(lat, lon, elevation=fl * 100 * 0.3048)
+        )
+
+    return gpx.to_xml()
+
+
 def to_geojson(path):
     import json
 
@@ -1110,6 +1130,12 @@ def export_flightplan(flight_id_or_plan, plan=None):
             "KML",
             "application/vnd.google-earth.kml+xml",
             to_kml(plan).encode("utf-8"),
+        ),
+        (
+            ".gpx",
+            "GPX",
+            "application/gpx+xml",
+            to_gpx(plan).encode("utf-8"),
         ),
     ]
     if isinstance(plan, FlightPlan) and "time" in plan.ds:
