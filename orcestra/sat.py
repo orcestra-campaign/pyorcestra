@@ -280,7 +280,7 @@ def goes_snapshot(
     if time is None:
         time = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    img = request_goes(time=time, layer=layer)
+    img = request_goes(time=time, layer=layer, extent=extent)
 
     bbox = f"{extent[2]}_{extent[0]}_{extent[3]}_{extent[1]}"
     filename = f"{time}_{bbox}_{layer}.jpg".replace(":", "")
