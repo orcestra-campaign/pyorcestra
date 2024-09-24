@@ -8,6 +8,7 @@ from typing import Optional, List, Dict
 from warnings import warn
 import datetime
 import json
+import numbers
 
 import numpy as np
 import pyproj
@@ -91,6 +92,12 @@ class LatLon:
             warn(
                 f"Time {self.time} of {self} is naive (i.e. NOT timezone aware!). Please consider specifying a time zone to avoid confision."
             )
+
+        if isinstance(self.lat, numbers.Real):
+            super().__setattr__("lat", float(self.lat))
+
+        if isinstance(self.lon, numbers.Real):
+            super().__setattr__("lon", float(self.lon))
 
     def towards(self, other, fraction=None, distance=None) -> LatLon:
         if fraction is None and distance is None:
