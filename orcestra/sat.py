@@ -6,7 +6,7 @@ import numpy as np
 import os
 import xarray as xr
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 from io import StringIO, BytesIO
 from PIL import Image
@@ -255,8 +255,8 @@ def request_goes(
 
 
 def goes_snapshot(
-    time: str,
-    layer_type: str,
+    time: str = None,
+    layer_type: str = "vis",
     extent: tuple = (-60, -40, 5, 20),
     folder_path: str = None,
 ):
@@ -277,7 +277,10 @@ def goes_snapshot(
             "Invalid option for layer type. Use 'vis' for visible or 'inf' for infrared."
         )
 
-    img = request_goes(time=time, layer=layer)
+    if time is None:
+        time = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    img = request_goes(time=time, layer=layer, extent=extent)
 
     bbox = f"{extent[2]}_{extent[0]}_{extent[3]}_{extent[1]}"
     filename = f"{time}_{bbox}_{layer}.jpg".replace(":", "")
