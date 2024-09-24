@@ -21,6 +21,7 @@ cmocean = "*"
 easygems = ">=0.0.8"
 flox = "*"  # part of xarray[accel]
 geopandas = "*"
+gpxpy = "*"
 healpix = "*"
 intake = "<2.0.0"
 intake-xarray = "*"
