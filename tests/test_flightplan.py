@@ -64,3 +64,9 @@ def test_fix_waypoint_time():
     print(path)
     assert path.time.values[-1] == np.datetime64("2014-01-01T00:00:00")
     assert path.time.values[0] < path.time.values[-1]
+
+
+def test_float_type_cast():
+    assert isinstance(fp.LatLon(0, 0).lat, float)
+    assert isinstance(fp.LatLon(0.0, 0).lat, float)
+    assert isinstance(fp.LatLon(np.float64(0), 0).lat, float)
