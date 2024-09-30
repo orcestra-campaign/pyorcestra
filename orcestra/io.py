@@ -66,7 +66,7 @@ def read_bahamas_100hz(txtfile, flight_date, gps_time_offset=np.timedelta64(-18,
 
     return _parse_igi(
         txtfile,
-        skip_header=81,
+        skip_header=80,
         delimiter=None,
         varinfo=_varinfo,
         flight_date=flight_date,
