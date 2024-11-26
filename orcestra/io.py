@@ -24,7 +24,9 @@ def _parse_igi(txtfile, skip_header, delimiter, varinfo, flight_date, gps_time_o
     return ds
 
 
-def read_igi(txtfile, flight_date, gps_time_offset=np.timedelta64(-18, "s")):
+def read_igi(
+    txtfile, flight_date, skip_header=83, gps_time_offset=np.timedelta64(-18, "s")
+):
     """Parse IGI position data txt file (1/10 Hz) and return as xr.Dataset."""
     _varinfo = {
         "time": dict(long_name="Generic/Time", unit="s"),
@@ -44,7 +46,7 @@ def read_igi(txtfile, flight_date, gps_time_offset=np.timedelta64(-18, "s")):
 
     return _parse_igi(
         txtfile,
-        skip_header=83,
+        skip_header=skip_header,
         delimiter=",",
         varinfo=_varinfo,
         flight_date=flight_date,
