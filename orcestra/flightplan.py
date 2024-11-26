@@ -145,6 +145,8 @@ class LatLon:
 
 
 bco = LatLon(13.16263889, -59.42875000, "BCO", fl=0)
+edmo = LatLon(48.08140278, 11.2831, "EDMO", fl=0)
+edja = LatLon(47.9888, 10.2395, "EDJA", fl=0)
 bgi = tbpb = LatLon(13.074722, -59.4925, "TBPB", fl=0)
 sal = LatLon(16.73448797020352, -22.94397423993749, "SAL", fl=0)
 mindelo = LatLon(16.877810, -24.995002, "MINDELO", fl=0)
