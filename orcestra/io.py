@@ -15,8 +15,15 @@ def _parse_igi(txtfile, skip_header, delimiter, varinfo, flight_date, gps_time_o
         }
     )
 
+    seconds = ds.time.values
+    if new_day := np.where(np.diff(seconds) < -86_399)[0]:
+        # If the time axis jumps back 23h 59min 59sec, move it forward a full day.
+        # This correcrts date changes during HALO flights where
+        # the internal "seconds since midnight" time is reset.
+        seconds[int(new_day) + 1 :] += 86_400
+
     ds = ds.assign_coords(
-        time=ds.time * np.timedelta64(1_000_000_000, "ns")
+        time=seconds * np.timedelta64(1_000_000_000, "ns")
         + np.datetime64(flight_date)
         + gps_time_offset
     )
