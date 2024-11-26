@@ -15,8 +15,15 @@ def _parse_igi(txtfile, skip_header, delimiter, varinfo, flight_date, gps_time_o
         }
     )
 
+    seconds = ds.time.values
+    if new_day := np.where(np.diff(seconds) < -86_399)[0]:
+        # If the time axis jumps back 23h 59min 59sec, move it forward a full day.
+        # This correcrts date changes during HALO flights where
+        # the internal "seconds since midnight" time is reset.
+        seconds[int(new_day) + 1 :] += 86_400
+
     ds = ds.assign_coords(
-        time=ds.time * np.timedelta64(1_000_000_000, "ns")
+        time=seconds * np.timedelta64(1_000_000_000, "ns")
         + np.datetime64(flight_date)
         + gps_time_offset
     )
@@ -24,7 +31,9 @@ def _parse_igi(txtfile, skip_header, delimiter, varinfo, flight_date, gps_time_o
     return ds
 
 
-def read_igi(txtfile, flight_date, gps_time_offset=np.timedelta64(-18, "s")):
+def read_igi(
+    txtfile, flight_date, skip_header=83, gps_time_offset=np.timedelta64(-18, "s")
+):
     """Parse IGI position data txt file (1/10 Hz) and return as xr.Dataset."""
     _varinfo = {
         "time": dict(long_name="Generic/Time", unit="s"),
@@ -44,7 +53,7 @@ def read_igi(txtfile, flight_date, gps_time_offset=np.timedelta64(-18, "s")):
 
     return _parse_igi(
         txtfile,
-        skip_header=83,
+        skip_header=skip_header,
         delimiter=",",
         varinfo=_varinfo,
         flight_date=flight_date,
