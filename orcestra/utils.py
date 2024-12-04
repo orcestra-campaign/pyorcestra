@@ -9,6 +9,7 @@ import pandas as pd
 import xarray as xr
 import matplotlib.pyplot as plt
 import yaml
+import fsspec
 
 
 def parse_datestr(datestr):
@@ -100,3 +101,13 @@ def export_planet(fname, fig=None, dpi=144, stem_ext="_planet", **kwargs):
         },
         **kwargs,
     )
+
+
+@lru_cache
+def get_flight_segments():
+    flight_segment_file = (
+        "https://orcestra-campaign.github.io/flight_segmentation/all_flights.yaml"
+    )
+    with fsspec.open(flight_segment_file) as f:
+        meta = yaml.safe_load(f)
+    return meta

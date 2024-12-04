@@ -20,6 +20,7 @@ cartopy = "*"
 cmocean = "*"
 easygems = ">=0.0.8"
 flox = "*"  # part of xarray[accel]
+fsspec = "*"
 geopandas = "*"
 gpxpy = "*"
 healpix = "*"
