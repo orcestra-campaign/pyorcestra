@@ -78,7 +78,19 @@ def earthcare_track_loader():
 
 
 def pace_track_loader():
-    return TLETrackLoader(get_tle(CATNR="58928"))
+    class _PACETrackLoader:
+        """Dummy class to emulate other track loaders."""
+
+        def __init__(self):
+            self.ds = xr.open_dataset(
+                "ipfs://QmfMH7HJveBJsHERphikd2QnswE2bTtyZo12tap5vbfsvS",
+                engine="zarr",
+            )
+
+        def get_track_for_day(self, day):
+            return self.ds.sel(time=day)
+
+    return _PACETrackLoader()
 
 
 class CalipsoTrackLoader:
