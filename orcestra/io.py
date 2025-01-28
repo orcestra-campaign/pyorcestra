@@ -36,19 +36,19 @@ def read_igi(
 ):
     """Parse IGI position data txt file (1/10 Hz) and return as xr.Dataset."""
     _varinfo = {
-        "time": dict(long_name="Generic/Time", unit="s"),
-        "IRS_LAT": dict(long_name="WGS84 Datum/Latitude", unit="degrees_north"),
-        "IRS_LON": dict(long_name="WGS84 Datum/Longitude", unit="degrees_east"),
-        "IRS_ALT": dict(long_name="WGS84 Datum/Elliptical Height", unit="m"),
-        "IRS_NSV": dict(long_name="Velocity/North", unit="m/s"),
-        "IRS_EWV": dict(long_name="Velocity/East", unit="m/s"),
-        "IRS_VV": dict(long_name="Velocity/Up", unit="m/s"),
-        "IRS_PHI": dict(long_name="Attitude/Roll", unit="degree"),
-        "IRS_THE": dict(long_name="Attitude/Pitch", unit="degree"),
-        "IRS_R": dict(long_name="Attitude/Yaw", unit="degree"),
-        "IGI_RMSX": dict(long_name="RMS/Position North", unit="m"),
-        "IGI_RMSY": dict(long_name="RMS/Position East", unit="m"),
-        "IGI_RMSZ": dict(long_name="RMS/Position Altitude", unit="m"),
+        "time": dict(long_name="Generic/Time", units="s"),
+        "IRS_LAT": dict(long_name="WGS84 Datum/Latitude", units="degrees_north"),
+        "IRS_LON": dict(long_name="WGS84 Datum/Longitude", units="degrees_east"),
+        "IRS_ALT": dict(long_name="WGS84 Datum/Elliptical Height", units="m"),
+        "IRS_NSV": dict(long_name="Velocity/North", units="m/s"),
+        "IRS_EWV": dict(long_name="Velocity/East", units="m/s"),
+        "IRS_VV": dict(long_name="Velocity/Up", units="m/s"),
+        "IRS_PHI": dict(long_name="Attitude/Roll", units="degree"),
+        "IRS_THE": dict(long_name="Attitude/Pitch", units="degree"),
+        "IRS_R": dict(long_name="Attitude/Yaw", units="degree"),
+        "IGI_RMSX": dict(long_name="RMS/Position North", units="m"),
+        "IGI_RMSY": dict(long_name="RMS/Position East", units="m"),
+        "IGI_RMSZ": dict(long_name="RMS/Position Altitude", units="m"),
     }
 
     return _parse_igi(
@@ -64,13 +64,13 @@ def read_igi(
 def read_bahamas_100hz(txtfile, flight_date, gps_time_offset=np.timedelta64(-18, "s")):
     """Parse BAHAMAS 100 Hz position data txt file and return as xr.Dataset."""
     _varinfo = {
-        "time": dict(long_name="Generic/Time", unit="s"),
-        "IRS_LON": dict(long_name="WGS84 Datum/Longitude", unit="degrees_east"),
-        "IRS_LAT": dict(long_name="WGS84 Datum/Latitude", unit="degrees_north"),
-        "IRS_ALT": dict(long_name="WGS84 Datum/Elliptical Height", unit="m"),
-        "IRS_PHI": dict(long_name="Attitude/Roll", unit="degree"),
-        "IRS_THE": dict(long_name="Attitude/Pitch", unit="degree"),
-        "IRS_R": dict(long_name="Attitude/Yaw", unit="degree"),
+        "time": dict(long_name="Generic/Time", units="s"),
+        "IRS_LON": dict(long_name="WGS84 Datum/Longitude", units="degrees_east"),
+        "IRS_LAT": dict(long_name="WGS84 Datum/Latitude", units="degrees_north"),
+        "IRS_ALT": dict(long_name="WGS84 Datum/Elliptical Height", units="m"),
+        "IRS_PHI": dict(long_name="Attitude/Roll", units="degree"),
+        "IRS_THE": dict(long_name="Attitude/Pitch", units="degree"),
+        "IRS_R": dict(long_name="Attitude/Yaw", units="degree"),
     }
 
     return _parse_igi(
