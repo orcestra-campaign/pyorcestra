@@ -482,9 +482,9 @@ class IntoCircle:
     enter: Optional[float] = None
 
     def __post_init__(self):
-        assert (
-            self.center.time is None
-        ), "The time attribute of the center coordinate of a circle MUST be None. I.e. a circle will have a duration, thus you can't assign it a point in time."
+        assert self.center.time is None, (
+            "The time attribute of the center coordinate of a circle MUST be None. I.e. a circle will have a duration, thus you can't assign it a point in time."
+        )
 
     def is_on_entry_path(self):
         """
@@ -808,7 +808,7 @@ def vertical_preview(path, color="C1", lw=2, **kwargs):
         wpx = x[path.waypoint_indices]
         ax.set_xticks(
             path.distance[path.waypoint_indices],
-            labels=[f"{x/1000:.0f}" for x in wpx],
+            labels=[f"{x / 1000:.0f}" for x in wpx],
             rotation=60.0,
         )
         ax.set_xlabel("Distance / km")
