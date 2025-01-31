@@ -32,21 +32,24 @@ def overpass_time(
     """
     Returns distance and time at closet overpass. Default assumes second platform is HALO
     tracks from BAHAMAS (with well formed time dimension) and has higher rate temporal data.
-    With the parameter n you can search for multiple overpasses, as e.g. during some flights 
+    With the parameter n you can search for multiple overpasses, as e.g. during some flights
     of the third part of PERCUSION, multiple meetings of EarthCARE and HALO were achieved
     """
     x = x_track.interp(time=y_track.time)
     az12, az21, dist = geod.inv(x[x_lon], x[x_lat], y_track[y_lon], y_track[y_lat])
     if n > 1:
         dist_diff = np.diff(dist)
-        local_minima_indices = np.where((dist_diff[:-1] < 0) & (dist_diff[1:] > 0))[0] + 1
+        local_minima_indices = (
+            np.where((dist_diff[:-1] < 0) & (dist_diff[1:] > 0))[0] + 1
+        )
         min_dists = dist[local_minima_indices]
-        #sort by distance to get the n closest overpasses
+        # sort by distance to get the n closest overpasses
         closest_indices = np.argsort(min_dists)[:n]
         overpass_indices = local_minima_indices[closest_indices]
         return dist[np.sort(overpass_indices)], y_track.time[np.sort(overpass_indices)]
     else:
         return np.nanmin(dist), y_track.time[np.nanargmin(dist)]
+
 
 def no_cartopy_download_warning():
     import warnings
