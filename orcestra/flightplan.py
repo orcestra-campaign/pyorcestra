@@ -35,8 +35,7 @@ def overpass_time(
     """
     x = x_track.interp(time=y_track.time)
     az12, az21, dist = geod.inv(x[x_lon], x[x_lat], y_track[y_lon], y_track[y_lat])
-    return dist, y_track.time[dist.argmin()]
-
+    return dist, y_track.time[np.nanargmin(dist)]
 
 def no_cartopy_download_warning():
     import warnings
