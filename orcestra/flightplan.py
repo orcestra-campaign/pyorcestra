@@ -27,7 +27,7 @@ geod = pyproj.Geod(ellps="WGS84")
 
 
 def overpass_time(
-    x_track, y_track, x_lon="lon", x_lat="lat", y_lon="IRS_LON", y_lat="IRS_LAT", n=1
+    x_track, y_track, x_lon="lon", x_lat="lat", y_lon="IRS_LON", y_lat="IRS_LAT", n=1, min_timedelta=np.timedelta64(1, 'h')
 ):
     """
     Returns distance and time at closet overpass. Default assumes second platform is HALO
@@ -38,10 +38,9 @@ def overpass_time(
     x = x_track.interp(time=y_track.time)
     az12, az21, dist = geod.inv(x[x_lon], x[x_lat], y_track[y_lon], y_track[y_lat])
     if n > 1:
-        dist_diff = np.diff(dist)
-        local_minima_indices = (
-            np.where((dist_diff[:-1] < 0) & (dist_diff[1:] > 0))[0] + 1
-        )
+        mean_time_diff = x.time.diff(dim='time').mean(dim='time')
+        min_time_step = np.ceil(min_timedelta / mean_time_diff)
+        local_minima_indices = scipy.signal.find_peaks(-dist, distance=min_time_step)[0]
         min_dists = dist[local_minima_indices]
         # sort by distance to get the n closest overpasses
         closest_indices = np.argsort(min_dists)[:n]
