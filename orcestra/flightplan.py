@@ -1337,3 +1337,39 @@ def find_edges(cwv, cwv_thresh, cwv_min=0, lat_cwv_max=9.0):
             lat_south = float(cwv_south.lat.where(cwv_south >= cwv_thresh).min().values)
 
     return lat_south, lat_north
+
+
+def find_nearest_point(ab: tuple[LatLon, LatLon], cd: tuple[LatLon, LatLon], res=1000):
+    """returns LatLon point that is closest point between two geodesics,
+    ab and cd, where each geodesic is defined by two points (in the tuple for
+    that line). If the lines intersect, the returned point is the intersection.
+    'res' gives the resolution in meters of the geodesics and so determines the
+    accuracy of the point found compared to an analytical solution"""
+
+    def points_on_line(a, b, num_points):
+        lons = np.linspace(a.lon, b.lon, num_points)
+        lats = np.linspace(a.lat, b.lat, num_points)
+        return lons, lats
+
+    n = int(ab[0].get_distance(ab[1]) // res)
+    m = int(cd[0].get_distance(cd[1]) // res)
+    lons1, lats1 = points_on_line(ab[0], ab[1], n)
+    lons2, lats2 = points_on_line(cd[0], cd[1], m)
+
+    l1, l2 = len(lons2), len(lats2)
+    dist = np.array(
+        [
+            geod.inv(np.full(l1, lon), np.full(l2, lat), lons2, lats2)[2]
+            for lon, lat in zip(lons1, lats1)
+        ]
+    )
+
+    idxs = np.argwhere(dist == np.nanmin(dist))
+    if len(idxs) != 1:
+        errmsg = "one and only one minimum distance can be found, are these lines two different geodesics?"
+        raise ValueError(errmsg)
+    idx_ab, idx_cd = idxs[0]
+    lon = np.mean([lons1[idx_ab], lons2[idx_cd]])
+    lat = np.mean([lats1[idx_ab], lats2[idx_cd]])
+
+    return LatLon(lat, lon)
