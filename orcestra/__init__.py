@@ -1,6 +1,7 @@
 from .flightplan import LatLon, bco, sal
 from .utils import parse_datestr, get_flight_segments
 from .io import read_igi, read_bahamas_100hz
+from .ipfs import ipfs_add
 
 import warnings
 
@@ -22,4 +23,5 @@ __all__ = [
     "get_flight_segments",
     "read_igi",
     "read_bahamas_100hz",
+    "ipfs_add",
 ]
