@@ -720,13 +720,26 @@ def plot_path(plan, ax, color="C1", label=None, show_waypoints=True, extra_color
 
 
 def plot_usurf(var, ax=None, levels=None):
+    import healpix
     import matplotlib.pylab as plt
     import easygems.healpix as egh
+    from easygems.resample import DelaunayResampler
+    from easygems.show import map_show, map_contour
+
+    # Emulate the linear HEALPix interpolation without healpy,
+    # which is unavailable on Windows.
+    lons, lats = healpix.pix2ang(
+        egh.get_nside(var),
+        np.arange(egh.get_npix(var)),
+        nest=egh.get_nest(var),
+        lonlat=True,
+    )
+    delaunay_resampler = DelaunayResampler(lat=lats, lon=lons)
 
     levels = levels or [0, 3]
-    egh.healpix_show(
+    map_show(
         var,
-        method="linear",
+        resampler=delaunay_resampler,
         alpha=0.75,
         cmap="YlGn",
         vmin=0,
@@ -734,8 +747,9 @@ def plot_usurf(var, ax=None, levels=None):
         ax=ax,
     )
 
-    contour_lines = egh.healpix_contour(
+    contour_lines = map_contour(
         var,
+        resampler=delaunay_resampler,
         levels=levels,
         colors="red",
         linewidths=1,
@@ -746,13 +760,26 @@ def plot_usurf(var, ax=None, levels=None):
 
 
 def plot_cwv(var, ax=None, levels=None):
+    import healpix
     import matplotlib.pylab as plt
     import easygems.healpix as egh
+    from easygems.resample import DelaunayResampler
+    from easygems.show import map_show, map_contour
+
+    # Emulate the linear HEALPix interpolation without healpy,
+    # which is unavailable on Windows.
+    lons, lats = healpix.pix2ang(
+        egh.get_nside(var),
+        np.arange(egh.get_npix(var)),
+        nest=egh.get_nest(var),
+        lonlat=True,
+    )
+    delaunay_resampler = DelaunayResampler(lat=lats, lon=lons)
 
     levels = levels or [45, 50]
-    egh.healpix_show(
+    map_show(
         var,
-        method="linear",
+        resampler=delaunay_resampler,
         alpha=0.75,
         cmap="Blues",
         vmin=45,
@@ -760,8 +787,9 @@ def plot_cwv(var, ax=None, levels=None):
         ax=ax,
     )
 
-    contour_lines = egh.healpix_contour(
+    contour_lines = map_contour(
         var,
+        resampler=delaunay_resampler,
         levels=levels,
         colors="grey",
         linewidths=1,

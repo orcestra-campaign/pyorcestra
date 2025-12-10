@@ -18,7 +18,7 @@ aiohttp = "*"
 astropy = "*"
 cartopy = "*"
 cmocean = "*"
-easygems = ">=0.0.8"
+easygems = ">=0.1.2"
 flox = "*"  # part of xarray[accel]
 fsspec = "*"
 geopandas = "*"
