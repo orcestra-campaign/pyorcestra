@@ -731,7 +731,7 @@ def plot_usurf(var, ax=None, levels=None):
     lons, lats = healpix.pix2ang(
         egh.get_nside(var),
         np.arange(egh.get_npix(var)),
-        nest=egh.get_nest(var),
+        nest=True,
         lonlat=True,
     )
     delaunay_resampler = DelaunayResampler(lat=lats, lon=lons)
@@ -771,7 +771,7 @@ def plot_cwv(var, ax=None, levels=None):
     lons, lats = healpix.pix2ang(
         egh.get_nside(var),
         np.arange(egh.get_npix(var)),
-        nest=egh.get_nest(var),
+        nest=True,
         lonlat=True,
     )
     delaunay_resampler = DelaunayResampler(lat=lats, lon=lons)
