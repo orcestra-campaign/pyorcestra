@@ -17,3 +17,16 @@ def test_ipfs_add():
     )
 
     fp.close()
+
+
+@pytest.mark.skipif(not shutil.which("ipfs"), reason="IPFS not found")
+def test_ipfs_add_cidv1():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        with open(f"{temp_dir}/world.txt", "w") as f:
+            f.write("Hello world!")
+
+        print(ipfs_add(temp_dir))
+        assert (
+            ipfs_add(temp_dir)
+            == "bafybeidxxwpdugrw6ykgok6exrfx6ccdgioeixknswb5ocuhbdep2bdshy"
+        )
