@@ -16,6 +16,7 @@ def ipfs_add(path):
             "--hidden",
             "--raw-leaves",
             "--chunker=size-1048576",
+            "--cid-version=1",
             "--quieter",
             path,
         ],
